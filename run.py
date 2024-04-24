@@ -145,4 +145,7 @@ async def catalog_with_configs(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info", timeout_keep_alive=600)
+    port = os.environ.get("APP_PORT", 8000)
+    if isinstance(port, str):
+        port = int(port)
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info", timeout_keep_alive=600)
