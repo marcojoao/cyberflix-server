@@ -1,0 +1,77 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: "v4.5.0"
+    hooks:
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-ast
+      - id: check-json
+      - id: check-yaml
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      # - id: check-added-large-files
+      - id: fix-byte-order-marker
+      - id: trailing-whitespace
+      - id: requirements-txt-fixer
+      - id: end-of-file-fixer
+      # - id: detect-private-key
+      - id: debug-statements
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: "v1.10.0"
+    hooks:
+      - id: python-use-type-annotations
+      - id: python-check-mock-methods
+      - id: python-no-log-warn
+      - id: text-unicode-replacement-char
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: "v3.15.1"
+    hooks:
+      - id: pyupgrade
+        language: python
+        files: \.py$
+        args: [--py310-plus]
+
+  - repo: https://github.com/psf/black
+    rev: "24.3.0"
+    hooks:
+      - id: black
+        language: python
+        files: \.py$
+        args: [--line-length=110]
+
+  - repo: https://github.com/asottile/seed-isort-config
+    rev: "v2.2.0"
+    hooks:
+      - id: seed-isort-config
+
+  - repo: https://github.com/PyCQA/isort
+    rev: "5.13.2"
+    hooks:
+      - id: isort
+        language: python
+        files: \.py$
+        args: [--profile=black]
+
+  # - repo: https://github.com/pre-commit/mirrors-prettier
+  #   rev: v3.0.0-alpha.4
+  #   hooks:
+  #     - id: prettier
+  #       args: [--prose-wrap=always, --print-width=88]
+
+  - repo: https://github.com/pycqa/pylint
+    rev: "v3.1.0"
+    hooks:
+      - id: pylint
+        language: python
+        exclude: ^tests/
+        files: \.py$
+        args:
+          - --max-line-length=120
+          - --ignore-imports=yes
+          - --ignore-docstrings=yes
+          - --disable=R0801, E0401, C0411, C0114, C0115, C0116, R0903, R0914, W2301,
+            W0718, R0913, W1514, R1736, C0302, E1120, C0103, R0902, C0415, C0412, R0904,
+            W0613, W0622, E1102, E1102, W0621, W0102, W0603, W0601, C0301, R0912, W0123,
+            W4905, W0108, W1203, R0915, R0911
