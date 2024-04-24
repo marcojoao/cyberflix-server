@@ -28,8 +28,11 @@ class Db:
     def __load_firebase_env(self, base64_string) -> dict:
         if base64_string is None:
             raise ValueError("FIREBASE environment variable is not set")
-        base64_bytes = base64_string.encode("ascii")
-        sample_string_bytes = base64.b64decode(base64_bytes + b"==", validate=True)
+        data = base64_string.encode("ascii")
+        missing_padding = len(data) % 4
+        if missing_padding:
+            data += b"=" * (4 - missing_padding)
+        sample_string_bytes = base64.b64decode(data)
         sample_string = sample_string_bytes.decode("ascii").replace("'", '"')
         json_object = json.loads(sample_string)
         return json_object
