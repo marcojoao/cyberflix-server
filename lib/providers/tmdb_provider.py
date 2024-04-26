@@ -1,5 +1,3 @@
-import os
-
 from lib import db_manager, utils
 from lib.apis.imdb import IMDB
 from lib.model.catalog_type import CatalogType
@@ -11,7 +9,7 @@ class TMDBProvider(CatalogProvider):
     def __init__(self):
         super().__init__()
         self.__imdb = IMDB()
-        self.__catalogs_pages = int(os.environ.get("TMDB_CATALOG_PAGES", "180"))
+        self.__catalogs_pages = 180
 
         self.__cached_tmdb_catalogs = []
 

@@ -1,16 +1,15 @@
 import json
-import os
 
 import httpx
 
-from lib import log
+from lib import env, log
 
 
 class Trakt:
     def __init__(self, client_id: str | None = None) -> None:
         self.__url = "https://api.trakt.tv/"
-        self.client_id = client_id or os.getenv("TRAKT_CLIENT_ID")
-        self.client_secret = os.getenv("TRAKT_CLIENT_SECRET")
+        self.client_id = client_id or env.TRAKT_CLIENT_ID
+        self.client_secret = env.TRAKT_CLIENT_SECRET
         self.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
 
     @property

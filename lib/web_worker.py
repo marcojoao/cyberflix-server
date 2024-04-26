@@ -106,8 +106,7 @@ class WebWorker:
         manifest.update({"catalogs": []})
         return manifest
 
-    def get_configured_manifest(self, configs: str | None) -> dict:
-        base_url = "https://82d7ae415a21-llama-catalog.baby-beamup.club/"
+    def get_configured_manifest(self, base_url: str, configs: str | None) -> dict:
         config_manifest = deepcopy(db_manager.cached_manifest)
         config_manifest.update({"logo": f"{base_url}logo.png"})
         config_manifest.update({"background": f"{base_url}background.png"})
@@ -241,7 +240,7 @@ class WebWorker:
         else:
             new_items = items
 
-        min_step = min(skip + 50, len(new_items))
+        min_step = min(skip + 25, len(new_items))
         return new_items[:min_step]
 
     def __translate_meta(self, **kwargs) -> dict:

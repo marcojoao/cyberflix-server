@@ -1,17 +1,19 @@
 import base64
 import json
-from os import environ
 
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+from lib import env
+
 
 class Db:
     def __init__(self, firebase_env_key: str | None = None) -> None:
-        app_environment: str = (environ.get("APP_ENVIRONMENT") or "STAGING").upper()
+        app_environment: str = (env.APP_ENVIRONMENT or "STAGING").upper()
         if firebase_env_key is None:
             firebase_env_key = f"FIREBASE_{app_environment}_KEY"
-        firebase_b64 = environ.get(firebase_env_key) or None
+
+        firebase_b64 = env.FIREBASE_PROD_KEY if app_environment == "PROD" else env.FIREBASE_STAGING_KEY
         self.json_file = self.__load_firebase_env(firebase_b64)
         self.name = f"CyberflixDB({firebase_env_key})"
 

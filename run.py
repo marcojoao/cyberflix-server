@@ -1,17 +1,17 @@
 import os
 
+import uvicorn
 from fastapi import FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from lib import env
 from lib.web_worker import WebWorker
 
 SERVER_VERSION = "0.3.0"
 
 worker = WebWorker()
-
-
 app = FastAPI()
 
 project_dir = os.path.join(app.root_path, "web/")
@@ -19,8 +19,17 @@ app.mount("/static", StaticFiles(directory=project_dir), name="static")
 templates = Jinja2Templates(directory=project_dir)
 
 
+def add_cache_headers(max_age: int) -> dict:
+    """Add cache control headers."""
+    return {
+        "Cache-Control": f"max-age={max_age}, stale-while-revalidate={max_age}, "
+        f"stale-if-error={max_age}, public"
+    }
+
+
 @app.get("/health", tags=["Health"])
 async def health_check():
+    """Check server health."""
     return JSONResponse({"status": "ok"}, status_code=200)
 
 
@@ -38,7 +47,7 @@ def __json_response(data: dict, extra_headers: dict[str, str] = {}, status_code:
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     cache_age = 60 * 60 * 2  # 2 hours
-    headers = {"Cache-Control": f"max-age={cache_age}"}
+    headers = add_cache_headers(cache_age)
     response = templates.TemplateResponse("index.html", {"request": request}, headers=headers)
     return response
 
@@ -49,27 +58,41 @@ async def configure(configs: str | None = None):
     return RedirectResponse(url="/", status_code=302)
 
 
+def get_image_asset(image_path: str):
+    cache_age = 60 * 60 * 12  # 12 hours
+    headers = add_cache_headers(cache_age)
+    media_type = "image/jpeg"
+    if image_path.endswith(".ico"):
+        media_type = "image/vnd.microsoft.icon"
+    elif image_path.endswith(".png"):
+        media_type = "image/png"
+
+    return FileResponse(image_path, media_type=media_type, headers=headers)
+
+
 @app.get("/favicon.ico")
 async def favicon():
-    return FileResponse("./web/favicon.png", media_type="image/vnd.microsoft.icon")
+    return get_image_asset("./web/favicon.png")
 
 
 @app.get("/logo.png")
 async def logo():
-    return FileResponse("./web/assets/assets/logo.png", media_type="image/png")
+    return get_image_asset("./web/assets/assets/logo.png")
 
 
 @app.get("/background.png")
 async def background():
-    return FileResponse("./web/assets/assets/bg_image.jpeg", media_type="image/jpeg")
+    return get_image_asset("./web/assets/assets/bg_image.jpeg")
 
 
 @app.get("/manifest.json")
 @app.get("/c/{configs}/manifest.json")
 async def manifest(
+    request: Request,
     configs: str | None = None,
 ):
-    manifest = worker.get_configured_manifest(configs)
+    referer = request.headers.get("referer") or ""
+    manifest = worker.get_configured_manifest(referer, configs)
     manifest.update({"server_version": SERVER_VERSION})
     return __json_response(manifest)
 
@@ -91,9 +114,7 @@ async def regix_config(config: str = Form(...)):
 async def trakt_url():
     url = {"url": worker.get_trakt_auth_url()}
     cache_age = 60 * 60 * 12  # 12 hours
-    headers = {
-        "Cache-Control": f"max-age={cache_age},stale-while-revalidate={cache_age},stale-if-error={cache_age},public"
-    }
+    headers = add_cache_headers(cache_age)
     return __json_response(url, extra_headers=headers)
 
 
@@ -114,9 +135,7 @@ async def meta(type: str | None, id: str | None, configs: str | None = None):
         return HTTPException(status_code=404, detail="Not found")
     meta = worker.get_meta(id=id, s_type=type, config=configs)
     cache_age = 60 * 60 * 12  # 12 hours
-    headers = {
-        "Cache-Control": f"max-age={cache_age},stale-while-revalidate={cache_age},stale-if-error={cache_age},public"
-    }
+    headers = add_cache_headers(cache_age)
     return __json_response(meta, extra_headers=headers)
 
 
@@ -136,16 +155,15 @@ async def catalog_with_configs(
 
     metas = worker.get_configured_catalog(id=id, extras=extras, config=configs)
     cache_age = 60 * 60 * 12  # 12 hours
-    headers = {
-        "Cache-Control": f"max-age={cache_age},stale-while-revalidate={cache_age},stale-if-error={cache_age},public"
-    }
+    headers = add_cache_headers(cache_age)
     return __json_response(metas, extra_headers=headers)
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    port = os.environ.get("APP_PORT", 8000)
-    if isinstance(port, str):
-        port = int(port)
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info", timeout_keep_alive=600)
+    uvicorn.run(
+        app,
+        host=env.APP_URL,
+        port=env.APP_PORT,
+        log_level=env.APP_LOG_LEVEL,
+        timeout_keep_alive=env.APP_TIMEOUT,
+    )

@@ -1,6 +1,4 @@
-import os
-
-from lib import db, utils
+from lib import db, env, utils
 from lib.model.catalog_type import CatalogType
 from lib.providers.catalog_info import ImdbInfo
 
@@ -59,7 +57,7 @@ class DatabaseManager:
             "catalogs": catalogs,
             "default_language": "en",
             "languages": self.supported_langs,
-            "sponsor": os.getenv("SPONSOR") or "",
+            "sponsor": env.SPONSOR,
         }
         return {"config": config}
 
