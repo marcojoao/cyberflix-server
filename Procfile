@@ -1,1 +1,1 @@
-web: gunicorn run:app --threads 4 --worker-class uvicorn.workers.UvicornWorker --timeout 600
+web: gunicorn run:app --timeout 600
