@@ -128,6 +128,7 @@ class WebWorker:
             log.info("::=>[Config] No user config found")
             return self.remove_manifest_catalogs(config_manifest)
 
+        self.__cached_user_configs.pop(user_config)
         parsed_config = user_config.split(",")
         if len(parsed_config) == 0:
             log.info("::=>[Config] No user config found")
