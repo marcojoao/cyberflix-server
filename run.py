@@ -91,7 +91,7 @@ async def manifest(
     request: Request,
     configs: str | None = None,
 ):
-    referer = request.headers.get("referer") or ""
+    referer = "https://cyberflix.elfhosted.com/"  # temporary
     manifest = worker.get_configured_manifest(referer, configs)
     manifest.update({"server_version": SERVER_VERSION})
     return __json_response(manifest)
@@ -101,13 +101,6 @@ async def manifest(
 async def web_config():
     config = worker.get_web_config()
     return __json_response(config)
-
-
-@app.post("/regix_config")
-async def regix_config(config: str = Form(...)):
-    if config is None:
-        return Response(status_code=500)
-    return __json_response({"id": worker.set_user_config(config)})
 
 
 @app.get("/get_trakt_url")

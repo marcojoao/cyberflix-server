@@ -23,8 +23,6 @@ class WebWorker:
         self.__builder: Builder = Builder()
         self.__is_working: bool = False
 
-        self.__cached_user_configs: dict = {}
-
         self.__cached_catalogs: dict = {}
 
         self.__last_update: datetime = datetime.now()
@@ -123,12 +121,6 @@ class WebWorker:
             log.info("::=>[Config] No user config found")
             return self.remove_manifest_catalogs(config_manifest)
 
-        user_config = self.__cached_user_configs.get(user_config, None)
-        if user_config is None:
-            log.info("::=>[Config] No user config found")
-            return self.remove_manifest_catalogs(config_manifest)
-
-        self.__cached_user_configs.pop(user_config)
         parsed_config = user_config.split(",")
         if len(parsed_config) == 0:
             log.info("::=>[Config] No user config found")
@@ -148,11 +140,6 @@ class WebWorker:
             config_manifest.update({"behaviorHints": {"configurable": True, "configurationRequired": False}})
         config_manifest.update({"catalogs": new_catalogs})
         return config_manifest
-
-    def set_user_config(self, config: str) -> str:
-        config_id = hashlib.md5(config.encode()).digest().hex()
-        self.__cached_user_configs.update({config_id: config})
-        return config_id
 
     def get_trakt_auth_url(self) -> str:
         return Trakt().get_authorization_url()
