@@ -41,7 +41,7 @@ class DatabaseManager:
     def get_web_config(self, catalogs) -> dict:
         config = {
             "max_num_of_catalogs": 60,
-            "enable_trackt": True,
+            "enable_trackt": False,
             "enable_rpdb": True,
             "enable_lang": False,
             "version": self.cached_manifest.get("version") or "0.0.0",
