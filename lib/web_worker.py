@@ -23,8 +23,6 @@ class WebWorker:
         self.__builder: Builder = Builder()
         self.__is_working: bool = False
 
-        self.__cached_catalogs: dict = {}
-
         self.__last_update: datetime = datetime.now()
 
         self.__update_interval = self.get_update_interval()
@@ -36,6 +34,9 @@ class WebWorker:
         self.__manifest_version = db_manager.cached_manifest.get("version", "Unknown")
         log.info(f"::=>[Manifest Name] {self.__manifest_name}")
         log.info(f"::=>[Manifest Version] {self.__manifest_version}")
+        for key, value in db_manager.cached_catalogs.items():
+            data = value.get("data") or []
+            log.info(f"::=>[Catalog] {key} - {len(data)}")
 
     @property
     def manifest_name(self):
@@ -177,7 +178,9 @@ class WebWorker:
         return {"meta": meta}
 
     def get_configured_catalog(self, id: str, extras: str | None, config: str | None) -> dict:
-        catalog_ids = self.catalogs.get(id, [])
+        catalog = db_manager.cached_catalogs.get(id) or {}
+        catalog_ids = catalog.get("data") or []
+
         parsed_extras = self.__extras_parser(extras)
         genre = parsed_extras.get("genre", None)
         skip = parsed_extras.get("skip", 0)
@@ -248,37 +251,12 @@ class WebWorker:
         return meta
 
     @property
-    def catalogs(self) -> dict:
-        return self.__cached_catalogs
-
-    @property
     def manifest(self):
         return db_manager.cached_manifest
 
     @property
     def last_update(self):
         return self.__last_update
-
-    def load_catalogs(self):
-        catalog_dict = {}
-        catalogs_names = db_manager.cached_manifest.get("catalogs", [])
-
-        def __get_schema(**kwargs):
-            catalog = kwargs.get("item", None)
-            if catalog is None:
-                return None
-            catalog_name = catalog.get("id", None)
-            cached_items = db_manager.get_catalog_schemas(catalog_name)
-            log.info(f"::=>[Catalog] {catalog_name} has {len(cached_items)} items")
-            return {catalog_name: cached_items}
-
-        results = utils.parallel_for(__get_schema, items=catalogs_names)
-        for result in results:
-            if result is None:
-                continue
-            catalog_dict.update(result)
-
-        return catalog_dict
 
     def force_update(self):
         log.info("::=>[Update Triggered]")
@@ -287,8 +265,8 @@ class WebWorker:
             return
         self.__is_working = True
         self.__builder.build()
-        db_manager.update_manifest()
-        self.__cached_catalogs: dict = self.load_catalogs()
+        db_manager.update_cache()
+
         self.__last_update = datetime.utcnow()
         self.__is_working = False
 
@@ -296,7 +274,6 @@ class WebWorker:
 
     def __background_catalog_updater(self):
         log.info("::=>[Update Service Started]")
-        self.__cached_catalogs: dict = self.load_catalogs()
         while True:
             time.sleep(self.__update_interval)
             try:

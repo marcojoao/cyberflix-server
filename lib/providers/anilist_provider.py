@@ -64,7 +64,7 @@ class AniListProvider(CatalogProvider):
             if result is not None:
                 imdb_infos.append(result)
 
-        db_manager.set_tmdb_ids_cache(db_manager.cached_tmdb_ids)
+        db_manager.update_tmbd_ids(db_manager.cached_tmdb_ids)
         return imdb_infos
 
     def __get_imdb_id(self, tmdb_id: str, type: CatalogType) -> str | None:

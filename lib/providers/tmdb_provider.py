@@ -11,15 +11,13 @@ class TMDBProvider(CatalogProvider):
         self.__imdb = IMDB()
         self.__catalogs_pages = 180
 
-        self.__cached_tmdb_catalogs = []
-
     def get_imdb_info(self, schema: str, c_type: CatalogType, **kwargs) -> list[ImdbInfo]:
         pages = kwargs.get("pages") or self.__catalogs_pages
         catalog_type = "tv" if c_type.value == "series" else "movie"
         schema = schema.replace("$type", catalog_type).replace("$api_key", self.tmdb.api_key)
         url = f"{self.tmdb.url}/{schema}"
         imdb_infos = self.get_catalog_pages(url=url, c_type=c_type, pages=pages)
-        db_manager.set_tmdb_ids_cache(db_manager.cached_tmdb_ids)
+        db_manager.update_tmbd_ids(db_manager.cached_tmdb_ids)
         return imdb_infos
 
     def __get_imdb_id(self, tmdb_id: str, type: CatalogType) -> str | None:
@@ -79,7 +77,7 @@ class TMDBProvider(CatalogProvider):
                     db_manager.cached_tmdb_ids.update({str(tmdb_id): {"valid": True, "imdb_id": imdb_id}})
                     tmdb_node.update({"imdb_id": imdb_id})
                     imdb_info = ImdbInfo(id=imdb_id, type=c_type)
-                    self.__cached_tmdb_catalogs.append(tmdb_node)
+
                     imdb_infos.append(imdb_info)
             return imdb_infos
 
