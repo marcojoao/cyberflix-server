@@ -162,16 +162,14 @@ class Builder:
 
         for conf_type in item.types:
             item_id = self.__get_item_id(item, conf_type)
-            cached_data = db_manager.get_catalog_schemas_info(item_id)
-            if cached_data is None:
+            catalog = db_manager.cached_catalogs.get(item_id) or {}
+            cached_data = catalog.get("data") or []
+            if item.force_update or len(cached_data) == 0:
                 continue
-            if item.force_update:
-                continue
-            expiration_data: str = cached_data.get("expiration_date", None)
+            expiration_data: str = catalog.get("expiration_date", None)
             if expiration_data is not None:
                 if datetime.fromisoformat(expiration_data) > datetime.now():
-                    imdb_infos = db_manager.get_catalog_schemas(item_id)
-                    item_metas = provider.get_catalog_metas(imdb_infos)
+                    item_metas = provider.get_catalog_metas(cached_data)
                     if item_metas is None or len(item_metas) == 0:
                         continue
 
@@ -207,8 +205,8 @@ class Builder:
                 continue
 
             imdb_infos = self.update_imdb_infos(imdb_infos, item_metas)
-            db_manager.set_catalog_schemas(
-                item_id, imdb_infos, expiration_date=item.expiration_date.isoformat()
+            db_manager.cached_catalogs.update(
+                {item_id: {"expiration_date": item.expiration_date, "data": imdb_infos}}
             )
 
             # update catalog metas
@@ -228,7 +226,7 @@ class Builder:
 
     def build(self):
         log.info("Caching catalongs...")
-        db_manager.init_tmdb_ids_cache()
+        # db_manager.init_tmdb_ids_cache()
         # db_manager.init_translations_cache()
 
         configs = CatalogList.get_catalog_configs()
@@ -244,10 +242,12 @@ class Builder:
         #     log.info(f"Uploading {lang} translations to firestore ...")
         #     db_manager.set_catalog_translations(db_manager.cached_translations, lang)
 
-        log.info("Uploading manifest to firestore ...")
+        log.info("Uploading manifest ...")
         manifest = self.__manifest.get_meta(catalogs_config=manifest_catalog)
+        db_manager.update_manifest(manifest)
 
-        db_manager.set_manifest(manifest)
+        log.info("Uploading catalogs ...")
+        db_manager.update_catalogs(db_manager.cached_catalogs)
 
 
 if __name__ == "__main__":
