@@ -1,3 +1,4 @@
+BetterJSONStorag==1.3.1
 fastapi==0.109.2
 gunicorn==20.1.0
 httpx==0.23.3
@@ -6,4 +7,5 @@ nest-asyncio==1.6.0
 orjson==3.10.1
 python-multipart==0.0.9
 rich==13.3.2
+tinydb==4.8.0
 uvicorn==0.20.0
