@@ -29,14 +29,18 @@ class WebWorker:
         self.__background_threading_0 = threading.Thread(
             name="Catalog Service", target=self.__background_catalog_updater
         )
-        self.__background_threading_0.start()
         self.__manifest_name = db_manager.cached_manifest.get("name", "Unknown")
         self.__manifest_version = db_manager.cached_manifest.get("version", "Unknown")
         log.info(f"::=>[Manifest Name] {self.__manifest_name}")
         log.info(f"::=>[Manifest Version] {self.__manifest_version}")
+        if len(db_manager.cached_catalogs) > 0:
+            log.info("::=>[Catalogs] No catalogs found in local cache, fetching...")
+            self.__update_interval = 0
         for key, value in db_manager.cached_catalogs.items():
             data = value.get("data") or []
-            log.info(f"::=>[Catalog] {key} - {len(data)}")
+            log.info(f"::=>[Catalog] {key} - {len(data)} items")
+
+        self.__background_threading_0.start()
 
     @property
     def manifest_name(self):
