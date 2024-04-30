@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from lib import env
 from lib.web_worker import WebWorker
 
-SERVER_VERSION = "0.3.0"
+SERVER_VERSION = "0.3.1"
 
 worker = WebWorker()
 app = FastAPI()
@@ -91,7 +91,7 @@ async def manifest(
     request: Request,
     configs: str | None = None,
 ):
-    referer = "https://cyberflix.elfhosted.com/"  # temporary
+    referer = str(request.base_url)
     manifest = worker.get_configured_manifest(referer, configs)
     manifest.update({"server_version": SERVER_VERSION})
     return __json_response(manifest)
