@@ -119,27 +119,35 @@ class DatabaseManager:
         return {"config": config}
 
     def __db_get_all(self, document: str) -> dict:
-        path = self.__local_dbs.get(document)
-        if not isinstance(path, Path):
+        try:
+            path = self.__local_dbs.get(document)
+            if not isinstance(path, Path):
+                return {}
+            with TinyDB(path, access_mode="r+", option=orjson.OPT_NAIVE_UTC, storage=BetterJSONStorage) as db:
+                docs = db.all()
+                result = {}
+                for doc in docs:
+                    key = doc.get("key")
+                    value = doc.get("value")
+                    if key is not None and value is not None:
+                        result[key] = value
+                return result
+        except Exception as e:
+            self.log.error(f"Failed to read from db: {e}")
             return {}
-        with TinyDB(path, access_mode="r+", option=orjson.OPT_NAIVE_UTC, storage=BetterJSONStorage) as db:
-            docs = db.all()
-            result = {}
-            for doc in docs:
-                key = doc.get("key")
-                value = doc.get("value")
-                if key is not None and value is not None:
-                    result[key] = value
-            return result
 
     def __db_set_all(self, document: str, items: dict) -> bool:
-        path = self.__local_dbs.get(document)
-        if not isinstance(path, Path):
+        try:
+            path = self.__local_dbs.get(document)
+            if not isinstance(path, Path):
+                return False
+            with TinyDB(path, access_mode="r+", option=orjson.OPT_NAIVE_UTC, storage=BetterJSONStorage) as db:
+                db.truncate()
+                item_list = []
+                for key, value in items.items():
+                    item_list.append({"key": key, "value": value})
+                db.insert_multiple(item_list)
+            return True
+        except Exception as e:
+            self.log.error(f"Failed to write to db: {e}")
             return False
-        with TinyDB(path, access_mode="r+", option=orjson.OPT_NAIVE_UTC, storage=BetterJSONStorage) as db:
-            db.truncate()
-            item_list = []
-            for key, value in items.items():
-                item_list.append({"key": key, "value": value})
-            db.insert_multiple(item_list)
-        return True

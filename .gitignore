@@ -5,4 +5,4 @@ beamup.json
 *.DS_Store
 
 .vscode/
-*.db
+# *.db
