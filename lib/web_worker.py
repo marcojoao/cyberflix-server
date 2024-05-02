@@ -183,7 +183,7 @@ class WebWorker:
             meta = self.__translate_meta(item=meta, lang=lang_key)
         return {"meta": meta}
 
-    def get_configured_catalog(self, id: str, extras: str | None, config: str | None) -> dict:
+    async def get_configured_catalog(self, id: str, extras: str | None, config: str | None) -> dict:
         catalog = db_manager.cached_catalogs.get(id) or {}
         catalog_ids = catalog.get("data") or []
 
@@ -205,7 +205,8 @@ class WebWorker:
             catalog_ids.extend(trakt_metas)
 
         catalog_ids = self.__filter_meta(catalog_ids, genre, skip)
-        metas = self.__provider.get_catalog_metas(catalog_info=catalog_ids).get("metas", [])
+        results = await self.__provider.get_catalog_metas_async(catalog_info=catalog_ids)
+        metas = results.get("metas") or []
         if lang_key != "en":
             metas = utils.parallel_for(self.__translate_meta, items=metas, lang=lang_key)
 

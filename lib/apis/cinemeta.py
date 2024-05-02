@@ -1,5 +1,7 @@
 import json
+
 import httpx
+
 from lib import log
 
 
@@ -17,7 +19,7 @@ class Cinemeta:
     def url(self) -> str:
         return self.__url
 
-    def get_meta_bulk(self, ids: list[str], s_type: str) -> list[dict]:
+    def get_metas(self, ids: list[str], s_type: str) -> list[dict]:
         meta_url = f"https://v3-cinemeta.strem.io/catalog/{s_type}/last-videos/lastVideosIds="
         results = []
         for idx, id in enumerate(ids):
@@ -30,6 +32,33 @@ class Cinemeta:
         with httpx.Client(follow_redirects=True) as client:
             try:
                 response = client.get(meta_url, headers=self.__headers, timeout=50)
+                if response.status_code == 200:
+                    buffer = response.content
+                    if buffer is None:
+                        return results
+                    data = json.loads(buffer)
+                    if isinstance(data, dict):
+                        metas_detailed = data.get("metasDetailed", [])
+                        for meta in metas_detailed:
+                            if meta is not None:
+                                results.append(meta)
+            except Exception as e:
+                log.info(e)
+        return results
+
+    async def get_metas_async(self, ids: list[str], s_type: str) -> list[dict]:
+        meta_url = f"https://v3-cinemeta.strem.io/catalog/{s_type}/last-videos/lastVideosIds="
+        results = []
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            for idx, id in enumerate(ids):
+                if idx == 0:
+                    meta_url += f"{id}"
+                elif idx == len(ids) - 1:
+                    meta_url += f",{id}.json"
+                else:
+                    meta_url += f",{id}"
+            try:
+                response = await client.get(meta_url, headers=self.__headers, timeout=50)
                 if response.status_code == 200:
                     buffer = response.content
                     if buffer is None:

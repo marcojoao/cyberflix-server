@@ -146,7 +146,7 @@ async def catalog_with_configs(
     if id is None:
         return HTTPException(status_code=404, detail="Not found")
 
-    metas = worker.get_configured_catalog(id=id, extras=extras, config=configs)
+    metas = await worker.get_configured_catalog(id=id, extras=extras, config=configs)
     cache_age = 60 * 60 * 12  # 12 hours
     headers = add_cache_headers(cache_age)
     return __json_response(metas, extra_headers=headers)
@@ -155,6 +155,8 @@ async def catalog_with_configs(
 if __name__ == "__main__":
     uvicorn.run(
         app,
+        loop="uvloop",
+        reload=False,
         host=env.APP_URL,
         port=env.APP_PORT,
         log_level=env.APP_LOG_LEVEL,
