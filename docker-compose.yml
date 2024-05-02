@@ -8,4 +8,4 @@ services:
     ports:
       - "8000:8000"
 
-    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "run:app", "--timeout 600", "-b", "0.0.0.0:8000"]
+    command: ["gunicorn", "-t", "600", "-b", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker", "run:app"]
