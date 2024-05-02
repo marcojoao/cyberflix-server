@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 
 from builder import Builder
-from lib import db_manager, log, utils
+from lib import db_manager, log
 from lib.apis.rpdb import RPDB
 from lib.apis.trakt import Trakt
 from lib.model.catalog_type import CatalogType
@@ -207,17 +207,17 @@ class WebWorker:
         catalog_ids = self.__filter_meta(catalog_ids, genre, skip)
         results = await self.__provider.get_catalog_metas_async(catalog_info=catalog_ids)
         metas = results.get("metas") or []
-        if lang_key != "en":
-            metas = utils.parallel_for(self.__translate_meta, items=metas, lang=lang_key)
+        # if lang_key != "en":
+        #     metas = utils.parallel_for(self.__translate_meta, items=metas, lang=lang_key)
 
         if rpdb_key is not None:
             metas = self.__rpdb_api.replace_posters(metas=metas, api_key=rpdb_key, lang=lang_key or "en")
-        if lang_key != "en":
-            for meta in metas:
-                imdb_id = meta.get("id") or ""
-                if imdb_id.startswith("cyberflix:"):
-                    continue
-                meta.update({"id": f"cyberflix:{imdb_id}"})
+        # if lang_key != "en":
+        #     for meta in metas:
+        #         imdb_id = meta.get("id") or ""
+        #         if imdb_id.startswith("cyberflix:"):
+        #             continue
+        #         meta.update({"id": f"cyberflix:{imdb_id}"})
         return {"metas": metas}
 
     def __filter_meta(self, items: list[ImdbInfo], genre: str | None, skip: int) -> list:
