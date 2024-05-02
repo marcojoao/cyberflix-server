@@ -26,3 +26,6 @@ Run the following command: `docker-compose up --build`, this command will build 
 
 3. **Access the Application**:
 Once the containers are up and running, you can access Cyberflix Server at `http://localhost:8000` in your web browser.
+
+## Disclaimer
+It's important to note that the code provided is for educational purposes only and should not be used for commercial purposes. All rights to services like TMDB, Anilist, Justwatch, and others are reserved by their respective owners.
