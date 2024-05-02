@@ -1,8 +1,11 @@
 version: '3.8'
-#! I didnt finish this part, but I would have used this to run the app in a container
 services:
-  app:
+  cyberflix-server:
     build: .
+    container_name: cyberflix-server
+    env_file:
+      - .env
     ports:
       - "8000:8000"
-    command: ["gunicorn", "run:app", "--timeout", "600", "-b", "0.0.0.0:8000", "--workers", "4"]
+
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "run:app", "--timeout 600", "-b", "0.0.0.0:8000"]
