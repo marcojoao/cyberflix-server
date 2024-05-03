@@ -15,11 +15,13 @@ class DatabaseManager:
             "manifest": Path("db/manifest.db"),
             "catalogs": Path("db/catalogs.db"),
             "tmdb_ids": Path("db/tmdb_ids.db"),
+            "metas": Path("db/metas.db"),
         }
 
         self.__cached_tmdb_ids: dict = {}
         self.__cached_manifest: dict = {}
         self.__cached_catalogs: dict = {}
+        self.__cached_metas: dict = {}
 
         self.update_cache()
 
@@ -27,6 +29,7 @@ class DatabaseManager:
         self.__cached_tmdb_ids = self.get_tmdb_ids()
         self.__cached_manifest = self.get_manifest()
         self.__cached_catalogs = self.get_catalogs()
+        self.__cached_metas = self.get_metas()
 
     @property
     def cached_tmdb_ids(self) -> dict:
@@ -40,11 +43,18 @@ class DatabaseManager:
     def cached_catalogs(self) -> dict:
         return self.__cached_catalogs
 
+    @property
+    def cached_metas(self) -> dict:
+        return self.__cached_metas
+
     def get_tmdb_ids(self) -> dict:
         return self.__db_get_all("tmdb_ids")
 
     def get_manifest(self) -> dict:
         return self.__db_get_all("manifest")
+
+    def get_metas(self) -> dict:
+        return self.__db_get_all("metas")
 
     def get_catalogs(self) -> dict:
         catalogs = self.__db_get_all("catalogs") or {}
@@ -63,6 +73,10 @@ class DatabaseManager:
     def update_tmbd_ids(self, tmdb_ids: dict):
         self.__db_set_all("tmdb_ids", tmdb_ids)
         self.__cached_tmdb_ids = self.get_tmdb_ids()
+
+    def update_metas(self, metas: dict):
+        self.__db_set_all("metas", metas)
+        self.__cached_metas = self.get_metas()
 
     def update_manifest(self, manifest: dict):
         self.__db_set_all("manifest", manifest)

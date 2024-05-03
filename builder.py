@@ -98,18 +98,18 @@ class Builder:
         }
         return data
 
-    def get_translation(self, imdb_id: str, title: str, lang: str) -> dict | None:
-        privider = self.__catalog_providers.get("justwatch")
-        if isinstance(privider, JustWatchProvider):
-            result = privider.api.search_title(title, language=lang)
-            for item in result:
-                item_imdb_id = item.get("imdb_id", None)
-                if item_imdb_id == imdb_id:
-                    t_name = item.get("title", None) or item.get("name", None)
-                    t_description = item.get("short_description", None) or item.get("description", None)
-                    t_poster = item.get("big_poster_url", None) or item.get("poster_url", None)
-                    return {"name": t_name, "description": t_description, "poster": t_poster}
-        return None
+    # def get_translation(self, imdb_id: str, title: str, lang: str) -> dict | None:
+    #     privider = self.__catalog_providers.get("justwatch")
+    #     if isinstance(privider, JustWatchProvider):
+    #         result = privider.api.search_title(title, language=lang)
+    #         for item in result:
+    #             item_imdb_id = item.get("imdb_id", None)
+    #             if item_imdb_id == imdb_id:
+    #                 t_name = item.get("title", None) or item.get("name", None)
+    #                 t_description = item.get("short_description", None) or item.get("description", None)
+    #                 t_poster = item.get("big_poster_url", None) or item.get("poster_url", None)
+    #                 return {"name": t_name, "description": t_description, "poster": t_poster}
+    #     return None
 
     # def build_translations(self, metas):
     #     langs = db_manager.supported_langs.values()
@@ -203,8 +203,10 @@ class Builder:
             item_metas = provider.get_catalog_metas(imdb_infos)
             if item_metas is None or len(item_metas) == 0:
                 continue
-
+            metas = item_metas.get("metas") or []
+            dict_by_id = {item.get("id"): item for item in metas}
             imdb_infos = self.update_imdb_infos(imdb_infos, item_metas)
+            db_manager.cached_metas.update(dict_by_id)
             db_manager.cached_catalogs.update(
                 {item_id: {"expiration_date": item.expiration_date, "data": imdb_infos}}
             )
@@ -241,6 +243,9 @@ class Builder:
         # for lang in db_manager.supported_langs.values():
         #     log.info(f"Uploading {lang} translations to firestore ...")
         #     db_manager.set_catalog_translations(db_manager.cached_translations, lang)
+
+        log.info("Uploading metas ...")
+        db_manager.update_metas(db_manager.cached_metas)
 
         log.info("Uploading manifest ...")
         manifest = self.__manifest.get_meta(catalogs_config=manifest_catalog)
