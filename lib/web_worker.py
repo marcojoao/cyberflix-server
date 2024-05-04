@@ -219,27 +219,17 @@ class WebWorker:
             results = await self.__provider.get_catalog_metas_async(catalog_info=catalogs_ids_not_cached)
             metas.extend(results.get("metas") or [])
 
-        # if lang_key != "en":
-        #     metas = utils.parallel_for(self.__translate_meta, items=metas, lang=lang_key)
-
-        if rpdb_key is not None:
-            metas = self.__rpdb_api.replace_posters(metas=metas, api_key=rpdb_key, lang=lang_key or "en")
-            new_cached_metas = {}
-            for meta in metas:
-                meta_id = meta.get("id") or None
-                if meta_id is None:
-                    continue
-                for item in catalog_ids:
-                    if isinstance(item, ImdbInfo) and item.id == meta_id:
-                        new_cached_metas.update({item.id: meta})
-                        break
-            db_manager.cached_metas.update(new_cached_metas)
-        # if lang_key != "en":
-        #     for meta in metas:
-        #         imdb_id = meta.get("id") or ""
-        #         if imdb_id.startswith("cyberflix:"):
-        #             continue
-        #         meta.update({"id": f"cyberflix:{imdb_id}"})
+        # update new metas to cache
+        new_cached_metas = {}
+        for meta in metas:
+            meta_id = meta.get("id") or None
+            if meta_id is None:
+                continue
+            for item in catalog_ids:
+                if isinstance(item, ImdbInfo) and item.id == meta_id:
+                    new_cached_metas.update({item.id: meta})
+                    break
+        db_manager.cached_metas.update(new_cached_metas)
 
         # order metas with ImdbInfo
         sorted_metas = []
@@ -250,6 +240,12 @@ class WebWorker:
                 if meta.get("id") == item.id:
                     sorted_metas.append(meta)
                     break
+
+        if rpdb_key is not None:
+            sorted_metas = self.__rpdb_api.replace_posters(
+                metas=sorted_metas, api_key=rpdb_key, lang=lang_key or "en"
+            )
+
         return {"metas": sorted_metas}
 
     def __filter_meta(self, items: list[ImdbInfo], genre: str | None, skip: int) -> list:
