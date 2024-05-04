@@ -224,6 +224,16 @@ class WebWorker:
 
         if rpdb_key is not None:
             metas = self.__rpdb_api.replace_posters(metas=metas, api_key=rpdb_key, lang=lang_key or "en")
+            new_cached_metas = {}
+            for meta in metas:
+                meta_id = meta.get("id") or None
+                if meta_id is None:
+                    continue
+                for item in catalog_ids:
+                    if isinstance(item, ImdbInfo) and item.id == meta_id:
+                        new_cached_metas.update({item.id: meta})
+                        break
+            db_manager.cached_metas.update(new_cached_metas)
         # if lang_key != "en":
         #     for meta in metas:
         #         imdb_id = meta.get("id") or ""
