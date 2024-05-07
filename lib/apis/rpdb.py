@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 
 import httpx
 
@@ -55,6 +56,8 @@ class RPDB:
             api_key = kwargs.get("api_key", None)
             lang = kwargs.get("lang", "en")
             item.update({"poster": self.get_poster(imdb_id=imdb_id, api_key=api_key, lang=lang)})
+
             return item
 
-        return utils.parallel_for(__get_poster, items=metas, api_key=api_key, lang=lang)
+        new_metas = deepcopy(metas)
+        return utils.parallel_for(__get_poster, items=new_metas, api_key=api_key, lang=lang)
