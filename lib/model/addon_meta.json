@@ -1,6 +1,5 @@
 {
   "id": "marcojoao.ml.cyberflix.catalog",
   "version": "1.5.1",
-  "name": "Cyberflix Catalog",
-  "description": "Cyberflix Catalog, an add-on for Stremio, aggregates catalogs from the most popular steaming platforms such as Netflix, Amazon Prime, Hulu and also specific catalogs for kids, Asian content and anime."
+  "description": "Cyberflix, an catalog add-on for Stremio, aggregates the most popular steaming platforms such as Netflix, Amazon Prime or Hulu, and also specific catalogs for Kids, Asian or Anime."
 }

@@ -1,7 +1,7 @@
 import json
 import os
 
-from lib import log
+from lib import env, log
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -31,7 +31,7 @@ class Manifest:
         data = {
             "id": self.__config["id"],
             "version": self.__config["version"],
-            "name": self.__config["name"],
+            "name": env.ADDON_NAME,
             "description": self.__config["description"],
             "logo": "",
             "behaviorHints": {"configurable": True, "configurationRequired": True},
