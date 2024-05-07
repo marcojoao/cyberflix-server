@@ -1,6 +1,6 @@
 import os
 
-ADDON_NAME: str = os.getenv("ADDON_NAME") or "Cyberflix"
+APP_NAME: str = os.getenv("APP_NAME") or "Cyberflix Catalog"
 APP_ENVIRONMENT: str = os.getenv("APP_ENVIRONMENT") or "STAGING"
 APP_URL: str = os.getenv("APP_URL") or "127.0.0.1"
 APP_PORT: int = int(os.getenv("APP_PORT") or 8000)

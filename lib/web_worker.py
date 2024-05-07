@@ -6,7 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 
 from builder import Builder
-from lib import db_manager, log
+from lib import db_manager, env, log
 from lib.apis.rpdb import RPDB
 from lib.apis.trakt import Trakt
 from lib.model.catalog_type import CatalogType
@@ -113,6 +113,7 @@ class WebWorker:
 
     def get_configured_manifest(self, base_url: str, configs: str | None) -> dict:
         config_manifest = deepcopy(db_manager.cached_manifest)
+        config_manifest.update({"name": env.APP_NAME})
         config_manifest.update({"logo": f"{base_url}logo.png"})
         config_manifest.update({"background": f"{base_url}background.png"})
         config_manifest.update({"version": self.manifest_version})

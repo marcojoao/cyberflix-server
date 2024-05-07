@@ -1,5 +1,6 @@
 import httpx
 
+
 class IMDB:
     def __init__(self) -> None:
         self.__url = "https://caching.graphql.imdb.com/"
@@ -50,7 +51,7 @@ class IMDB:
             "extensions": {
                 "persistedQuery": {
                     "version": 1,
-                    "sha256Hash": "28be9832bab4e1acaccc405bc13dc9976ce0bfb2a9149a189a5833879d724852",
+                    "sha256Hash": "42714660b115c035a3c14572bfd2765c622e2659f7b346e2ee7a1f24296f08e7",
                 }
             },
         }
@@ -82,7 +83,7 @@ class IMDB:
             "extensions": {
                 "persistedQuery": {
                     "version": 1,
-                    "sha256Hash": "28be9832bab4e1acaccc405bc13dc9976ce0bfb2a9149a189a5833879d724852",
+                    "sha256Hash": "42714660b115c035a3c14572bfd2765c622e2659f7b346e2ee7a1f24296f08e7",
                 }
             },
         }
