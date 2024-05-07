@@ -119,18 +119,15 @@ class WebWorker:
         config_manifest.update({"last_update": str(datetime.now())})
 
         if configs is None:
-            log.info("::=>[Config] No user config found")
             return self.remove_manifest_catalogs(config_manifest)
         converted_configs = self.convert_config(configs)
-        user_config = converted_configs.get("catalogs", None)
+        config = converted_configs.get("catalogs", None)
 
-        if user_config is None:
-            log.info("::=>[Config] No user config found")
+        if config is None:
             return self.remove_manifest_catalogs(config_manifest)
 
-        parsed_config = user_config.split(",")
+        parsed_config = config.split(",")
         if len(parsed_config) == 0:
-            log.info("::=>[Config] No user config found")
             return self.remove_manifest_catalogs(config_manifest)
 
         tmp_catalogs = config_manifest.get("catalogs", [])
