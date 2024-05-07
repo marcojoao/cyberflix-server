@@ -45,6 +45,7 @@ class RPDB:
         return url
 
     def replace_posters(self, metas: list[dict], api_key: str, lang="en") -> list[dict]:
+        new_metas = deepcopy(metas)
         if self.check_request_left(api_key=api_key) < len(metas):
             return metas
 
@@ -59,5 +60,4 @@ class RPDB:
 
             return item
 
-        new_metas = deepcopy(metas)
         return utils.parallel_for(__get_poster, items=new_metas, api_key=api_key, lang=lang)
