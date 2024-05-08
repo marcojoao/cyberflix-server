@@ -9,12 +9,7 @@ This guide will walk you through setting up the environment variables using a `.
 1. **Create a `.env` file**: Start by creating a file named `.env` in the root directory of your Cyberflix Server project.
 
 2. **Add Environment Variables**:
-   Add the following environment variables to your `.env` file:
-
-    APP_ENVIRONMENT="PROD"
-    TMDB_API_KEY=""
-    TRAKT_CLIENT_ID=''
-    TRAKT_CLIENT_SECRET=''
+   Create an `.env` file, check the example on `.env.template`.
 
  Replace the empty strings with appropriate values. You can obtain TMDB API key, Trakt client ID, and Trakt client secret from their respective developer portals.
 

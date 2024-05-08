@@ -6,3 +6,5 @@ beamup.json
 
 .vscode/
 metas.db
+*.ipynb_checkpoints/
+*.ipynb

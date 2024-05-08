@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from lib import env
 from lib.web_worker import WebWorker
 
-SERVER_VERSION = "0.3.1"
+SERVER_VERSION = "0.3.2"
 
 worker = WebWorker()
 app = FastAPI()

@@ -65,7 +65,7 @@ class Builder:
         is_type_years = item.filter_type == CatalogFilterType.YEARS
         unique_filters = sorted(list(unique_filters), reverse=is_type_years)
         if is_type_years and len(unique_filters) > 10:
-            unique_filters = unique_filters[:15]
+            unique_filters = unique_filters[:65]
         name_id_parts = item.name_id.split(".")
         name = item.display_name
         item_type = ""

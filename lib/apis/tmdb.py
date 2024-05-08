@@ -1,16 +1,18 @@
 import json
-import os
 
 import httpx
 
-from lib import log
+from lib import env, log
 from lib.model.catalog_type import CatalogType
 
 
 class TMDB:
     def __init__(self, api_key: str | None = None) -> None:
         self.__url = "https://api.themoviedb.org/3"
-        self.__api_key = api_key or os.environ["TMDB_API_KEY"]
+        api_key = api_key or env.TMDB_API_KEY
+        if api_key is None:
+            raise ValueError("TMDB API key is missing")
+        self.__api_key = api_key
         self.__headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.5",

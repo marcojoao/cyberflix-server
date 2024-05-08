@@ -315,7 +315,7 @@ class CatalogList:
                 name_id="anime.trending",
                 provider_id="anilist",
                 types=movies_series,
-                schema="sort=TRENDING_DESC,POPULARITY_DESC",
+                schema="sort=TRENDING_DESC",
                 hide_filters=["Animation"],
                 expiration_days=1,
                 pages=20,
