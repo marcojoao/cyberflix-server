@@ -264,7 +264,7 @@ class WebWorker:
         else:
             new_items = items
 
-        min_step = min(skip + 25, len(new_items))
+        min_step = min(skip + 65, len(new_items))
         return new_items[:min_step]
 
     # def __translate_meta(self, **kwargs) -> dict:
