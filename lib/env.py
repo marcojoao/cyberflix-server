@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 APP_NAME: str = os.getenv("APP_NAME") or "Cyberflix Catalog"
 APP_URL: str = os.getenv("APP_URL") or "127.0.0.1"
 APP_PORT: int = int(os.getenv("APP_PORT") or 8000)
