@@ -64,6 +64,27 @@ class CatalogList:
                 pages=20,
             ),
             CatalogConfig(
+                name_id="public_lists.mind_fucked",
+                provider_id="mdblist",
+                types=[CatalogType.MOVIES],
+                schema="lists/3892/items/",
+                expiration_days=3,
+            ),
+            CatalogConfig(
+                name_id="public_lists.best_documentary",
+                provider_id="mdblist",
+                types=[CatalogType.MOVIES],
+                schema="lists/2406/items/",
+                expiration_days=3,
+            ),
+            CatalogConfig(
+                name_id="public_lists.superhero",
+                provider_id="mdblist",
+                types=[CatalogType.MOVIES],
+                schema="lists/2413/items/",
+                expiration_days=3,
+            ),
+            CatalogConfig(
                 name_id="awards.emmy_winners",
                 provider_id="imdb",
                 types=[CatalogType.ANY],

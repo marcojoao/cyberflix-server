@@ -14,6 +14,7 @@ from lib.providers.catalog_info import ImdbInfo
 from lib.providers.catalog_provider import CatalogProvider
 from lib.providers.imdb_provider import IMDBProvider
 from lib.providers.just_watch_provider import JustWatchProvider
+from lib.providers.mdblist_provider import MDBListProvider
 from lib.providers.tmdb_provider import TMDBProvider
 from lib.providers.trakt_provider import TraktProvider
 
@@ -25,6 +26,7 @@ class Builder:
             "tmdb": TMDBProvider(),
             "imdb": IMDBProvider(),
             "anilist": AniListProvider(),
+            "mdblist": MDBListProvider(),
             "justwatch": JustWatchProvider(),
             "trakt": TraktProvider(),
         }
