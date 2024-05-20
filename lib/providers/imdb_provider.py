@@ -20,11 +20,11 @@ class IMDBProvider(CatalogProvider):
             imdb_type = imdb_node.get("type", None)
             if imdb_type is None:
                 continue
-            meta_type = (
-                CatalogType.MOVIES
-                if imdb_type == "movie"
-                else CatalogType.SERIES if c_type == CatalogType.ANY else c_type
-            )
+            if imdb_type == "movie" and c_type == CatalogType.SERIES:
+                continue
+            if imdb_type == "tv_series" and c_type == CatalogType.MOVIES:
+                continue
+            meta_type = CatalogType.MOVIES if imdb_type == "movie" else CatalogType.SERIES
             imdb_infos.append(ImdbInfo(id=imdb_id, type=meta_type))
 
         return imdb_infos

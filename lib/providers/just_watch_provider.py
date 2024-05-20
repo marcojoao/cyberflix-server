@@ -20,6 +20,7 @@ class JustWatchProvider(CatalogProvider):
         else:
             r_type = "SHOW" if c_type == CatalogType.SERIES else "MOVIE"
         schema = f"objectType={r_type}&{schema}"
+
         jw_data = self.__api.request_page(schema=schema, pages=pages)
         imdb_infos = []
         for data in jw_data:

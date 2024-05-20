@@ -7,8 +7,8 @@ def divide_chunks(l, n):
 
 
 def parallel_for(function, items, **kwargs) -> list:
-    results = []
-    order = []
+    items = list(items)
+    results = [None for _ in range(len(items))]
 
     def __thread_job(index, item):
         return index, function(item=item, index=index, **kwargs)
@@ -18,10 +18,6 @@ def parallel_for(function, items, **kwargs) -> list:
 
         for future in concurrent.futures.as_completed(futures):
             index, result = future.result()
-            order.append(index)
-            results.append(result)
-
-        temp = [results[i] for i in order]
-        results = temp
+            results[index] = result
 
     return results

@@ -24,10 +24,14 @@ class CatalogProvider:
 
         series_infos = [info for info in catalog_info if info.type == CatalogType.SERIES]
         movies_infos = [info for info in catalog_info if info.type == CatalogType.MOVIES]
+
         results.update(self.get_all_metas(infos=series_infos, c_type=CatalogType.SERIES))
         results.update(self.get_all_metas(infos=movies_infos, c_type=CatalogType.MOVIES))
 
-        metas = [results[info.id] for info in catalog_info if info.id in results]
+        metas = []
+        for info in catalog_info:
+            if info.id in results:
+                metas.append(results[info.id])
         return {"metas": metas}
 
     async def get_catalog_metas_async(self, catalog_info: list[ImdbInfo]) -> dict:
@@ -41,7 +45,10 @@ class CatalogProvider:
         results.update(series_metas)
         results.update(movies_metas)
 
-        metas = [results[info.id] for info in catalog_info if info.id in results]
+        metas = []
+        for info in catalog_info:
+            if info.id in results:
+                metas.append(results[info.id])
         return {"metas": metas}
 
     def get_all_metas(self, infos: list[ImdbInfo], c_type: CatalogType) -> dict:

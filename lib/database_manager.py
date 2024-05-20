@@ -156,7 +156,7 @@ class DatabaseManager:
             if not isinstance(path, Path):
                 return False
             with TinyDB(path, access_mode="r+", option=orjson.OPT_NAIVE_UTC, storage=BetterJSONStorage) as db:
-                db.truncate()
+                db.remove(doc_ids=[doc.doc_id for doc in db.all()])
                 item_list = []
                 for key, value in items.items():
                     item_list.append({"key": key, "value": value})

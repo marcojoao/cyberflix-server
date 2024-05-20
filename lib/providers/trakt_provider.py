@@ -11,6 +11,8 @@ class TraktProvider(CatalogProvider):
 
     def get_imdb_info(self, schema: str, c_type: CatalogType, **kwargs) -> list[ImdbInfo]:
         r_type = "shows" if c_type == CatalogType.SERIES else "movies"
+        if c_type == CatalogType.ANY:
+            raise ValueError("Trakt does not support 'ANY' type")
         imdb_ids = self.__provider.request_page(s_type=r_type, schema=schema)
         imdb_infos = []
         for imdb_id in imdb_ids:
