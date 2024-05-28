@@ -27,12 +27,12 @@ class CatalogList:
 
         movies_series = [CatalogType.MOVIES, CatalogType.SERIES]
         config: list[CatalogConfig] = [
-            # CatalogConfig(
-            #     name_id="recommendations",
-            #     provider_id="trakt",
-            #     types=movies_series,
-            #     schema="recommendations",
-            # ),
+            CatalogConfig(
+                name_id="recommendations",
+                provider_id="trakt",
+                types=movies_series,
+                schema="recommendations",
+            ),
             CatalogConfig(
                 name_id="premieres",
                 provider_id="tmdb",
@@ -522,27 +522,27 @@ class CatalogList:
                 schema=f"{tmdb_discover_new_series}&watch_region=BR&with_watch_providers=307&with_original_language=pt",
                 expiration_days=1,
             ),
-            CatalogConfig(
-                name_id="public_lists.mind_fucked",
-                provider_id="mdblist",
-                types=[CatalogType.MOVIES],
-                schema="lists/3892/items/",
-                expiration_days=3,
-            ),
-            CatalogConfig(
-                name_id="public_lists.best_documentary",
-                provider_id="mdblist",
-                types=[CatalogType.MOVIES],
-                schema="lists/2406/items/",
-                expiration_days=3,
-            ),
-            CatalogConfig(
-                name_id="public_lists.superhero",
-                provider_id="mdblist",
-                types=[CatalogType.MOVIES],
-                schema="lists/2413/items/",
-                expiration_days=3,
-            ),
+            # CatalogConfig(
+            #     name_id="public_lists.mind_fucked",
+            #     provider_id="mdblist",
+            #     types=[CatalogType.MOVIES],
+            #     schema="lists/3892/items/",
+            #     expiration_days=3,
+            # ),
+            # CatalogConfig(
+            #     name_id="public_lists.best_documentary",
+            #     provider_id="mdblist",
+            #     types=[CatalogType.MOVIES],
+            #     schema="lists/2406/items/",
+            #     expiration_days=3,
+            # ),
+            # CatalogConfig(
+            #     name_id="public_lists.superhero",
+            #     provider_id="mdblist",
+            #     types=[CatalogType.MOVIES],
+            #     schema="lists/2413/items/",
+            #     expiration_days=3,
+            # ),
             CatalogConfig(
                 name_id="network_series.discovery",
                 provider_id="tmdb",
