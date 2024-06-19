@@ -100,58 +100,6 @@ class Builder:
         }
         return data
 
-    # def get_translation(self, imdb_id: str, title: str, lang: str) -> dict | None:
-    #     privider = self.__catalog_providers.get("justwatch")
-    #     if isinstance(privider, JustWatchProvider):
-    #         result = privider.api.search_title(title, language=lang)
-    #         for item in result:
-    #             item_imdb_id = item.get("imdb_id", None)
-    #             if item_imdb_id == imdb_id:
-    #                 t_name = item.get("title", None) or item.get("name", None)
-    #                 t_description = item.get("short_description", None) or item.get("description", None)
-    #                 t_poster = item.get("big_poster_url", None) or item.get("poster_url", None)
-    #                 return {"name": t_name, "description": t_description, "poster": t_poster}
-    #     return None
-
-    # def build_translations(self, metas):
-    #     langs = db_manager.supported_langs.values()
-    #     results = {}
-    #     if metas is None:
-    #         return results
-    #     privider = self.__catalog_providers.get("justwatch")
-    #     if not isinstance(privider, JustWatchProvider):
-    #         return results
-
-    #     def __get_translations(**kwargs):
-    #         item = kwargs.get("item")
-    #         privider = kwargs.get("privider")
-    #         langs = kwargs.get("langs")
-    #         if item is None or privider is None or langs is None:
-    #             return {}
-    #         imdb_id = item.get("id", None)
-    #         title = item.get("name", None)
-    #         if imdb_id is None or title is None:
-    #             return {}
-    #         cached_translation = db_manager.cached_translations.get(imdb_id, None)
-    #         translations = {}
-    #         for lang in langs:
-    #             got_cached = cached_translation is not None and lang in cached_translation
-    #             if got_cached:  # check if translation is cached
-    #                 translations.update({lang: cached_translation[lang]})
-    #                 continue
-    #             result = self.get_translation(imdb_id, title, lang)
-    #             if result is not None:
-    #                 translations.update({lang: result})
-    #         return {imdb_id: translations}
-
-    #     metas_list = metas.get("metas")
-    #     results = utils.parallel_for(__get_translations, items=metas_list, privider=privider, langs=langs)
-
-    #     output = {}
-    #     for result in results:
-    #         output.update(result)
-    #     return output
-
     def __get_item_id(self, item: CatalogConfig, conf_type: CatalogType) -> str:
         return f"{item.name_id.lower()}.{conf_type.value.lower()}"
 
@@ -170,7 +118,7 @@ class Builder:
                 continue
             expiration_data: str = catalog.get("expiration_date", None)
             if expiration_data is not None:
-                if datetime.fromisoformat(expiration_data) > datetime.now():
+                if datetime.fromisoformat(expiration_data) < datetime.now():
                     item_metas = provider.get_catalog_metas(cached_data)
                     if item_metas is None or len(item_metas) == 0:
                         continue
