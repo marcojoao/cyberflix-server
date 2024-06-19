@@ -1,4 +1,4 @@
-from datetime import datetime
+# from datetime import datetime
 
 from rich.progress import track
 
@@ -110,26 +110,26 @@ class Builder:
         if provider is None:
             return outputs
 
-        for conf_type in item.types:
-            item_id = self.__get_item_id(item, conf_type)
-            catalog = db_manager.cached_catalogs.get(item_id) or {}
-            cached_data = catalog.get("data") or []
-            if item.force_update or len(cached_data) == 0:
-                continue
-            expiration_data: str = catalog.get("expiration_date", None)
-            if expiration_data is not None:
-                if datetime.fromisoformat(expiration_data) < datetime.now():
-                    item_metas = provider.get_catalog_metas(cached_data)
-                    if item_metas is None or len(item_metas) == 0:
-                        continue
+        # for conf_type in item.types:
+        #     item_id = self.__get_item_id(item, conf_type)
+        #     catalog = db_manager.cached_catalogs.get(item_id) or {}
+        #     cached_data = catalog.get("data") or []
+        #     if item.force_update or len(cached_data) == 0:
+        #         continue
+        #     expiration_data: str = catalog.get("expiration_date", None)
+        #     if expiration_data is not None:
+        #         if datetime.fromisoformat(expiration_data) < datetime.now():
+        #             item_metas = provider.get_catalog_metas(cached_data)
+        #             if item_metas is None or len(item_metas) == 0:
+        #                 continue
 
-                    data = self.build_manifiest_item(item, conf_type, item_metas)
-                    if data is not None:
-                        outputs.append(data)
-                        types.remove(conf_type)
-                        log.info(
-                            f"Using cached {self.__get_item_id(item=item, conf_type=conf_type)}({conf_type.value.lower()})"
-                        )
+        #             data = self.build_manifiest_item(item, conf_type, item_metas)
+        #             if data is not None:
+        #                 outputs.append(data)
+        #                 types.remove(conf_type)
+        #                 log.info(
+        #                     f"Using cached {self.__get_item_id(item=item, conf_type=conf_type)}({conf_type.value.lower()})"
+        #                 )
 
         if len(types) == 0:
             return outputs

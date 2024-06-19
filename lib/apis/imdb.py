@@ -162,19 +162,12 @@ class IMDB:
                         continue
 
                     data = dict(resp.json())
-                    has_next_page = (
-                        data.get("data", {})
-                        .get("advancedTitleSearch", {})
-                        .get("pageInfo", {})
-                        .get("hasNextPage", False)
-                    )
-                    edges = data.get("data", {}).get("advancedTitleSearch", {}).get("edges", [])
-                    last_cursor = (
-                        data.get("data", {})
-                        .get("advancedTitleSearch", {})
-                        .get("pageInfo", {})
-                        .get("endCursor", "")
-                    )
+                    advanced_title_search = data.get("data", {}).get("advancedTitleSearch", {})
+                    if advanced_title_search is None:
+                        continue
+                    has_next_page = advanced_title_search.get("pageInfo", {}).get("hasNextPage", False)
+                    edges = advanced_title_search.get("edges", [])
+                    last_cursor = advanced_title_search.get("pageInfo", {}).get("endCursor", "")
                     for edge in edges:
                         info = edge.get("node", {}).get("title", {})
                         imdb_id = info.get("id", None)
