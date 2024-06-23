@@ -58,6 +58,12 @@ async def configure(configs: str | None = None):
     return RedirectResponse(url="/", status_code=302)
 
 
+@app.get("/last_update.txt")
+async def last_update():
+    last_update = worker.last_update.strftime("%m/%d/%Y, %H:%M:%S")
+    return last_update
+
+
 def get_image_asset(image_path: str):
     cache_age = 60 * 60 * 12  # 12 hours
     headers = add_cache_headers(cache_age)
