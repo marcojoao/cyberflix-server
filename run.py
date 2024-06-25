@@ -30,6 +30,9 @@ def add_cache_headers(max_age: int) -> dict:
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Check server health."""
+    catalogs = worker.get_web_config().get("config", {}).get("catalogs", [])
+    if catalogs == []:
+        return JSONResponse({"status": "error"}, status_code=500)
     return JSONResponse({"status": "ok"}, status_code=200)
 
 
