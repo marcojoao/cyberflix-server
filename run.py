@@ -115,9 +115,9 @@ async def web_config():
 @app.get("/get_trakt_url")
 async def trakt_url():
     url = {"url": worker.get_trakt_auth_url()}
-    cache_age = 60 * 60 * 4  # 4 hours
-    headers = add_cache_headers(cache_age)
-    return __json_response(url, extra_headers=headers)
+    # cache_age = 60 * 60 * 4  # 4 hours
+    # headers = add_cache_headers(cache_age)
+    return __json_response(url)
 
 
 @app.post("/get_trakt_access_token")
@@ -136,9 +136,9 @@ async def meta(type: str | None, id: str | None, configs: str | None = None):
     if id is None or type is None:
         return HTTPException(status_code=404, detail="Not found")
     meta = worker.get_meta(id=id, s_type=type, config=configs)
-    cache_age = 60 * 60 * 4  # 4 hours
-    headers = add_cache_headers(cache_age)
-    return __json_response(meta, extra_headers=headers)
+    # cache_age = 60 * 60 * 4  # 4 hours
+    # headers = add_cache_headers(cache_age)
+    return __json_response(meta)
 
 
 @app.get("/catalog/{type}/{id}.json")
@@ -156,9 +156,9 @@ async def catalog_with_configs(
         return HTTPException(status_code=404, detail="Not found")
 
     metas = await worker.get_configured_catalog(id=id, extras=extras, config=configs)
-    cache_age = 60 * 60 * 4  # 4 hours
-    headers = add_cache_headers(cache_age)
-    return __json_response(metas, extra_headers=headers)
+    # cache_age = 60 * 60 * 4  # 4 hours
+    # headers = add_cache_headers(cache_age)
+    return __json_response(metas)
 
 
 if __name__ == "__main__":
