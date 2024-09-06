@@ -39,6 +39,3 @@ class ImdbInfo:
 
     def __repr__(self) -> str:
         return f"ImdbInfo(id={self.id}, type={self.type}, genres={self.genres}, year={self.year})"
-
-    def __dict__(self):  # type: ignore
-        return self.to_dict()

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import orjson
 from BetterJSONStorage import BetterJSONStorage
+import orjson.orjson
 from tinydb import TinyDB
 
 from lib import env
