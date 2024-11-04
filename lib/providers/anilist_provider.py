@@ -19,9 +19,8 @@ class AniListProvider(CatalogProvider):
         media = self.__anilist.request_page(s_type=r_type, schema=schema, pages=pages)
         imdb_infos = []
 
-        def get_imdb_info(**kwargs) -> ImdbInfo | None:
-            title = kwargs.get("item") or {}
-            name = title.get("native", None)
+        def get_imdb_info(item: dict, idx: int, worker_id: int) -> ImdbInfo | None:
+            name = item.get("native", None)
             if name is None:
                 return None
             results = self.__tmdb.search(query=name, c_type=c_type)

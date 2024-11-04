@@ -32,14 +32,13 @@ class TMDBProvider(CatalogProvider):
     def get_catalog_pages(self, url: str, c_type: CatalogType, pages: int) -> list:
         urls = [f"{url}&page={i+1}" for i in range(pages)]
 
-        def __get_metas_thread(**kwargs):
-            page = kwargs.get("item", None)
-
+        def __get_metas_thread(item: str, idx: int, worker_id: int, **kwargs) -> list:
             c_type = kwargs.get("c_type", None)
             imdb_infos = []
-            if urls is None or c_type is None:
+            if c_type is None:
                 return imdb_infos
-            tmdb_nodes = self.tmdb.request_page(page)
+                
+            tmdb_nodes = self.tmdb.request_page(item)  # Using item directly as the URL
             if tmdb_nodes is None or len(tmdb_nodes) == 0:
                 return []
             for tmdb_node in tmdb_nodes:
@@ -82,9 +81,9 @@ class TMDBProvider(CatalogProvider):
                 imdb_infos.append(imdb_info)
             return imdb_infos
 
-        # chunks = utils.divide_chunks(urls, 10)
         results = utils.parallel_for(__get_metas_thread, items=urls, c_type=c_type)
         final_results = []
         for result in results:
-            final_results.extend(result)
+            if result is not None:
+                final_results.extend(result)
         return final_results

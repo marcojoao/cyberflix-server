@@ -49,15 +49,13 @@ class RPDB:
         if self.check_request_left(api_key=api_key) < len(metas):
             return metas
 
-        def __get_poster(**kwargs) -> str | None:
-            item = kwargs.get("item", None)
+        def __get_poster(item: dict, idx: int, worker_id: int, **kwargs) -> dict:
             if item is None:
                 return None
             imdb_id = item.get("id", None)
             api_key = kwargs.get("api_key", None)
             lang = kwargs.get("lang", "en")
             item.update({"poster": self.get_poster(imdb_id=imdb_id, api_key=api_key, lang=lang)})
-
             return item
 
         return utils.parallel_for(__get_poster, items=new_metas, api_key=api_key, lang=lang)

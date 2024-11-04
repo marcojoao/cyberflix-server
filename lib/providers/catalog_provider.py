@@ -1,6 +1,6 @@
 import asyncio
 from abc import abstractmethod
-
+import os
 from lib import log, utils
 from lib.apis.cinemeta import Cinemeta
 from lib.apis.tmdb import TMDB
@@ -52,16 +52,11 @@ class CatalogProvider:
         return {"metas": metas}
 
     def get_all_metas(self, infos: list[ImdbInfo], c_type: CatalogType) -> dict:
-        def __get_metas(**kwargs) -> dict:
-            infos = kwargs.get("item", None)
-            c_type = kwargs.get("c_type", None)
-            ids_to_download = []
+        def __get_metas(chunk: list[ImdbInfo], actual_idx: int = None, worker_id: int = None, **kwargs) -> dict:
+            c_type = kwargs.get("c_type")
             result_metas = {}
-            for info in infos:
-                ids_to_download.append(info.id)
-            if len(ids_to_download) == 0:
-                return result_metas
-            metas = self.cinemeta.get_metas(ids_to_download, s_type=c_type.value.lower())
+            imdb_ids = [info.id for info in chunk]
+            metas = self.cinemeta.get_metas(imdb_ids, s_type=c_type.value.lower())
             for meta in metas:
                 if meta is None:
                     continue
@@ -78,11 +73,11 @@ class CatalogProvider:
             return result_metas
 
         results = {}
-        chunks = utils.divide_chunks(infos, 100)
-        list_results = utils.parallel_for(__get_metas, items=chunks, c_type=c_type)
+        chunks = utils.divide_chunks(infos, 15)
+        list_results = utils.parallel_for(__get_metas, chunks, c_type=c_type)
         for result in list_results:
-            for key, value in result.items():
-                results.update({key: value})
+            if isinstance(result, dict):
+                results.update(result)
         return results
 
     async def get_all_metas_async(self, infos: list[ImdbInfo], c_type: CatalogType) -> dict:
