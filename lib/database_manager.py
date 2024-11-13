@@ -1,52 +1,94 @@
-from pathlib import Path
-
-import orjson
-from BetterJSONStorage import BetterJSONStorage
-import orjson.orjson
-from tinydb import TinyDB
+from supabase import create_client, Client
 
 from lib import env
 from lib.providers.catalog_info import ImdbInfo
 
 
 class DatabaseManager:
-    def __init__(self, log):
+    def __init__(self, log=None):
         self.log = log
-        self.__local_dbs: dict[str, Path] = {
-            "manifest": Path("db/manifest.db"),
-            "catalogs": Path("db/catalogs.db"),
-            "tmdb_ids": Path("db/tmdb_ids.db"),
-            "metas": Path("db/metas.db"),
+        self.supabase = create_client(env.SUPABASE_URL, env.SUPABASE_KEY)
+
+        try:
+            _ = self.supabase.rpc('manifest').execute()
+            self.log.info("Database connection successful")
+        except Exception as e:
+            # Just log the error instead of raising it
+            self.log.warning(f"Database health check failed (this is normal on first run): {str(e)}")
+
+        self.__table_names = [
+            "manifest",
+            "catalogs",
+            "tmdb_ids",
+            "metas"
+        ]
+
+        # Load all data into memory at startup
+        self.__cached_data: dict[str, dict] = {
+            table_name: self.__db_get_all(table_name)
+            for table_name in self.__table_names
         }
 
-        self.__cached_tmdb_ids: dict = {}
-        self.__cached_manifest: dict = {}
-        self.__cached_catalogs: dict = {}
-        self.__cached_metas: dict = {}
 
-        self.update_cache()
+    def __db_get_all(self, table_name: str) -> dict:
+        try:
+            response = self.supabase.table(table_name).select("key, value").execute()
+            if not response.data:
+                return {}
 
-    def update_cache(self):
-        self.__cached_tmdb_ids = self.get_tmdb_ids()
-        self.__cached_manifest = self.get_manifest()
-        self.__cached_catalogs = self.get_catalogs()
-        self.__cached_metas = self.get_metas()
+            return {item['key']: item['value'] for item in response.data}
+
+        except Exception as e:
+            self.log.error(f"Failed to read from {table_name}: {e}")
+            raise
+
+    def __db_set_all(self, table_name: str, items: dict) -> bool:
+        try:
+            # Delete existing data
+            self.supabase.table(table_name).delete().neq('key', '').execute()
+
+            if items:
+                # Insert new data in batches of 1000 to avoid request size limits
+                batch_size = 1000
+                data = [{"key": k, "value": v} for k, v in items.items()]
+
+                for i in range(0, len(data), batch_size):
+                    batch = data[i:i + batch_size]
+                    try:
+                        self.supabase.table(table_name).upsert(batch).execute()
+                    except Exception as e:
+                        # If insert fails due to RLS, try upsert
+                        if "42501" in str(e):
+                            self.log.warning(f"Insert failed, trying upsert for {table_name}")
+                            # Use individual upserts as fallback
+                            for item in batch:
+                                self.supabase.table(table_name).upsert(item).execute()
+                        else:
+                            raise
+
+            # Update cache
+            self.__cached_data[table_name] = items
+            return True
+
+        except Exception as e:
+            self.log.error(f"Failed to write to {table_name}: {e}")
+            raise
 
     @property
     def cached_tmdb_ids(self) -> dict:
-        return self.__cached_tmdb_ids
+        return self.__cached_data["tmdb_ids"]
 
     @property
     def cached_manifest(self) -> dict:
-        return self.__cached_manifest
+        return self.__cached_data["manifest"]
 
     @property
     def cached_catalogs(self) -> dict:
-        return self.__cached_catalogs
+        return self.__cached_data["catalogs"]
 
     @property
     def cached_metas(self) -> dict:
-        return self.__cached_metas
+        return self.__cached_data["metas"]
 
     def get_tmdb_ids(self) -> dict:
         return self.__db_get_all("tmdb_ids")
@@ -73,29 +115,48 @@ class DatabaseManager:
 
     def update_tmbd_ids(self, tmdb_ids: dict):
         self.__db_set_all("tmdb_ids", tmdb_ids)
-        self.__cached_tmdb_ids = self.get_tmdb_ids()
+        self.__cached_data["tmdb_ids"] = self.get_tmdb_ids()
 
     def update_metas(self, metas: dict):
         self.__db_set_all("metas", metas)
-        self.__cached_metas = self.get_metas()
+        self.__cached_data["metas"] = self.get_metas()
 
     def update_manifest(self, manifest: dict):
         self.__db_set_all("manifest", manifest)
-        self.__cached_manifest = self.get_manifest()
+        self.__cached_data["manifest"] = self.get_manifest()
 
     def update_catalogs(self, catalogs: dict):
+        import json
+        from datetime import datetime
+
+        class DateTimeEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, datetime):
+                    return obj.isoformat()
+                if isinstance(obj, ImdbInfo):
+                    return obj.to_dict()
+                return super().default(obj)
+
+        # Create a copy to avoid modifying the original data
+        serializable_catalogs = {}
+        
         for key, value in catalogs.items():
             if not isinstance(value, dict):
                 continue
-            data = value.get("data") or []
-            conv_data = []
-            for item in data:
-                if isinstance(item, ImdbInfo):
-                    conv_data.append(item.to_dict())
-            value.update({"data": conv_data})
-            catalogs.update({key: value})
-        self.__db_set_all("catalogs", catalogs)
-        self.__cached_catalogs = self.get_catalogs()
+            
+            try:
+                # Convert the value to JSON-serializable format
+                serializable_value = json.loads(
+                    json.dumps(value, cls=DateTimeEncoder)
+                )
+                serializable_catalogs[key] = serializable_value
+                
+            except Exception as e:
+                self.log.error(f"Failed to serialize catalog {key}: {e}")
+                continue
+
+        self.__db_set_all("catalogs", serializable_catalogs)
+        self.__cached_data["catalogs"] = self.get_catalogs()
 
     @property
     def supported_langs(self) -> dict[str, str]:
@@ -132,37 +193,3 @@ class DatabaseManager:
             "sponsor": env.SPONSOR,
         }
         return {"config": config}
-
-    def __db_get_all(self, document: str) -> dict:
-        try:
-            path = self.__local_dbs.get(document)
-            if not isinstance(path, Path):
-                return {}
-            with TinyDB(path, access_mode="r+", option=orjson.OPT_NAIVE_UTC, storage=BetterJSONStorage) as db:
-                docs = db.all()
-                result = {}
-                for doc in docs:
-                    key = doc.get("key")
-                    value = doc.get("value")
-                    if key is not None and value is not None:
-                        result[key] = value
-                return result
-        except Exception as e:
-            self.log.error(f"Failed to read from db: {e}")
-            return {}
-
-    def __db_set_all(self, document: str, items: dict) -> bool:
-        try:
-            path = self.__local_dbs.get(document)
-            if not isinstance(path, Path):
-                return False
-            with TinyDB(path, access_mode="r+", option=orjson.OPT_NAIVE_UTC, storage=BetterJSONStorage) as db:
-                db.remove(doc_ids=[doc.doc_id for doc in db.all()])
-                item_list = []
-                for key, value in items.items():
-                    item_list.append({"key": key, "value": value})
-                db.insert_multiple(item_list)
-            return True
-        except Exception as e:
-            self.log.error(f"Failed to write to db: {e}")
-            return False
