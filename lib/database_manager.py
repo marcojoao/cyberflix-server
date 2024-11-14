@@ -25,9 +25,9 @@ class DatabaseManager:
             "metas": {},
         }
 
-        # Start background loading of metas
-        import threading
-        threading.Thread(target=self.__load_metas_background, daemon=True).start()
+        # # Start background loading of metas
+        # import threading
+        # threading.Thread(target=self.__load_metas_background, daemon=True).start()
 
     def __load_metas_background(self):
         """Load metas in the background and update the cache."""
