@@ -3,6 +3,8 @@ from supabase import create_client
 from lib import env
 from lib.providers.catalog_info import ImdbInfo
 
+from datetime import datetime
+
 
 class DatabaseManager:
     def __init__(self, log=None):
@@ -26,36 +28,27 @@ class DatabaseManager:
 
     def __db_update_changes(self, table_name: str, new_items: dict) -> bool:
         try:
-            # Get existing data
+
             existing_items = self.__cached_data.get(table_name, {})
-            # Find items to delete (keys in existing but not in new)
             keys_to_delete = set(existing_items.keys()) - set(new_items.keys())
-            if keys_to_delete:
-                self.supabase.table(table_name).delete().in_('key', list(keys_to_delete)).execute()
-
-            # Find items to upsert (new or modified items)
-            items_to_upsert = []
+            keys_to_update = set()
+            keys_to_insert = set()
             for key, value in new_items.items():
-                if key not in existing_items or existing_items[key] != value:
-                    items_to_upsert.append({"key": key, "value": value})
+                if key not in existing_items:
+                    keys_to_insert.add(key)
+                elif existing_items[key] != value:
+                    keys_to_update.add(key)
 
-            # Upsert changed items in batches
-            if items_to_upsert:
-                batch_size = 1000
-                for i in range(0, len(items_to_upsert), batch_size):
-                    batch = items_to_upsert[i:i + batch_size]
-                    try:
-                        self.supabase.table(table_name).upsert(batch).execute()
-                    except Exception as e:
-                        if "42501" in str(e):
-                            self.log.warning(f"Batch upsert failed, trying individual upserts for {table_name}")
-                            for item in batch:
-                                self.supabase.table(table_name).upsert(item).execute()
-                        else:
-                            raise
+            if keys_to_delete or keys_to_update or keys_to_insert:
+                change_record = {
+                    "table_name": table_name,
+                    "deleted_keys": list(keys_to_delete),
+                    "updated_keys": list(keys_to_update),
+                    "inserted_keys": list(keys_to_insert),
+                    "timestamp": datetime.now().isoformat()
+                }
+                self.supabase.table("changes").insert(change_record).execute()
 
-            # Update cache
-            self.__cached_data[table_name] = new_items
             return True
 
         except Exception as e:
@@ -259,16 +252,48 @@ class DatabaseManager:
 
     def get_metas_by_keys(self, keys: list[str]) -> dict:
         try:
-            response = self.supabase.table("metas") \
-                .select("key, value") \
-                .in_("key", keys) \
-                .execute()
+            # Import here to avoid circular dependency
+            from lib.utils import parallel_for, divide_chunks
 
-            if not response.data:
-                return {}
-            new_metas = {item['key']: item['value'] for item in response.data}
-            self.__cached_data["metas"].update(new_metas)
-            return new_metas
+            # Split keys into chunks to avoid too many keys in a single query
+            CHUNK_SIZE = 5  # Adjust based on your needs
+            
+            def fetch_meta(key_chunk, _, __, **kwargs):
+                response = self.supabase.table("metas") \
+                    .select("key, value") \
+                    .in_("key", key_chunk) \
+                    .execute()
+                
+                if not response.data:
+                    return {}
+                return {item['key']: item['value'] for item in response.data}
+            
+            # Process chunks in parallel
+            chunks = list(divide_chunks(keys, CHUNK_SIZE))
+            results = parallel_for(fetch_meta, chunks)
+            
+            # Combine all results
+            combined_metas = {}
+            for chunk_result in results:
+                combined_metas.update(chunk_result)
+                
+            # Update cache
+            self.__cached_data["metas"].update(combined_metas)
+            return combined_metas
+            
         except Exception as e:
             self.log.error(f"Failed to read specific metas: {e}")
             raise
+
+    def get_recent_changes(self, limit: int = 50) -> list:
+        """Get the most recent changes."""
+        try:
+            response = self.supabase.table("changes") \
+                .select("*") \
+                .order("timestamp", desc=True) \
+                .limit(limit) \
+                .execute()
+            return response.data
+        except Exception as e:
+            self.log.error(f"Failed to get recent changes: {e}")
+            return []

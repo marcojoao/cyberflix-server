@@ -53,7 +53,7 @@ class WebWorker:
         return self.__manifest_version
 
     def get_update_interval(self) -> int:
-        current_time = datetime.utcnow()
+        current_time = datetime.now()
         tar_time = current_time + timedelta(days=1)
         tar_time = tar_time.replace(hour=3, minute=0, second=0, microsecond=0)
 
@@ -218,8 +218,6 @@ class WebWorker:
             keys = [item.id for item in catalogs_ids_not_cached]
             new_metas = db_manager.get_metas_by_keys(keys)
             metas.extend(new_metas.values())
-            # results = await self.__provider.get_catalog_metas_async(catalog_info=catalogs_ids_not_cached)
-            # metas.extend(results.get("metas") or [])
 
         new_cached_metas = {}
         for meta in metas:
@@ -292,6 +290,32 @@ class WebWorker:
     def last_update(self):
         return self.__last_update
 
+    def get_recent_changes(self) -> dict:
+        recent_changes = db_manager.get_recent_changes()
+        report = {
+            "summary": {
+                "total_changes": len(recent_changes),
+                "last_update": recent_changes[0]["timestamp"] if recent_changes else None,
+            },
+            "changes_by_table": {},
+            "details": recent_changes
+        }
+
+        for change in recent_changes:
+            table = change["table_name"]
+            if table not in report["changes_by_table"]:
+                report["changes_by_table"][table] = {
+                    "deletions": 0,
+                    "updates": 0,
+                    "insertions": 0
+                }
+
+            report["changes_by_table"][table]["deletions"] += len(change["deleted_keys"])
+            report["changes_by_table"][table]["updates"] += len(change["updated_keys"])
+            report["changes_by_table"][table]["insertions"] += len(change["inserted_keys"])
+
+        return report
+
     def force_update(self):
         log.info("::=>[Update Triggered]")
         if self.__is_working:
@@ -301,7 +325,7 @@ class WebWorker:
         self.__builder.build()
         db_manager.update_cache()
 
-        self.__last_update = datetime.utcnow()
+        self.__last_update = datetime.now()
         self.__is_working = False
 
         log.info("::=>[Update Finished]")

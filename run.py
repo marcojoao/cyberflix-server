@@ -1,18 +1,21 @@
 import os
+import asyncio
 
 import uvicorn
-from fastapi import FastAPI, Form, HTTPException, Request, Response
+from fastapi import FastAPI, Form, HTTPException, Request, Response, Path
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
+from fastapi.middleware.gzip import GZipMiddleware
 from lib import env
 from lib.web_worker import WebWorker
+import httpx
 
-SERVER_VERSION = "0.3.3"
+SERVER_VERSION = "1.0.0"
 
 worker = WebWorker()
 app = FastAPI()
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 project_dir = os.path.join(app.root_path, "web/")
 app.mount("/static", StaticFiles(directory=project_dir), name="static")
@@ -78,6 +81,11 @@ async def configure(configs: str | None = None):
 async def last_update():
     last_update = worker.last_update.strftime("%m/%d/%Y, %H:%M:%S")
     return last_update
+
+@app.get("/recent_changes.json")
+async def recent_changes():
+    changes = worker.get_recent_changes()
+    return __json_response(changes)
 
 
 def get_image_asset(image_path: str):
@@ -171,7 +179,6 @@ async def catalog_with_configs(
     metas = await worker.get_configured_catalog(id=id, extras=extras, config=configs)
     headers = add_cache_headers(CACHE_DURATIONS["MEDIUM"])
     return __json_response(metas, extra_headers=headers)
-
 
 if __name__ == "__main__":
     uvicorn.run(
