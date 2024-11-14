@@ -1,4 +1,4 @@
-from supabase import create_client, Client
+from supabase import create_client
 
 from lib import env
 from lib.providers.catalog_info import ImdbInfo
@@ -23,36 +23,42 @@ class DatabaseManager:
             "metas": self.get_metas()
         }
 
-    def __db_set_all(self, table_name: str, items: dict) -> bool:
+    def __db_update_changes(self, table_name: str, new_items: dict) -> bool:
         try:
-            # Delete existing data
-            self.supabase.table(table_name).delete().neq('key', '').execute()
+            # Get existing data
+            existing_items = self.__cached_data.get(table_name, {})
+            # Find items to delete (keys in existing but not in new)
+            keys_to_delete = set(existing_items.keys()) - set(new_items.keys())
+            if keys_to_delete:
+                self.supabase.table(table_name).delete().in_('key', list(keys_to_delete)).execute()
 
-            if items:
-                # Insert new data in batches of 1000 to avoid request size limits
+            # Find items to upsert (new or modified items)
+            items_to_upsert = []
+            for key, value in new_items.items():
+                if key not in existing_items or existing_items[key] != value:
+                    items_to_upsert.append({"key": key, "value": value})
+
+            # Upsert changed items in batches
+            if items_to_upsert:
                 batch_size = 1000
-                data = [{"key": k, "value": v} for k, v in items.items()]
-
-                for i in range(0, len(data), batch_size):
-                    batch = data[i:i + batch_size]
+                for i in range(0, len(items_to_upsert), batch_size):
+                    batch = items_to_upsert[i:i + batch_size]
                     try:
                         self.supabase.table(table_name).upsert(batch).execute()
                     except Exception as e:
-                        # If insert fails due to RLS, try upsert
                         if "42501" in str(e):
-                            self.log.warning(f"Insert failed, trying upsert for {table_name}")
-                            # Use individual upserts as fallback
+                            self.log.warning(f"Batch upsert failed, trying individual upserts for {table_name}")
                             for item in batch:
                                 self.supabase.table(table_name).upsert(item).execute()
                         else:
                             raise
 
             # Update cache
-            self.__cached_data[table_name] = items
+            self.__cached_data[table_name] = new_items
             return True
 
         except Exception as e:
-            self.log.error(f"Failed to write to {table_name}: {e}")
+            self.log.error(f"Failed to update {table_name}: {e}")
             raise
 
     @property
@@ -73,10 +79,27 @@ class DatabaseManager:
 
     def get_tmdb_ids(self) -> dict:
         try:
-            response = self.supabase.table("tmdb_ids").select("key, value").execute()
-            if not response.data:
-                return {}
-            return {item['key']: item['value'] for item in response.data}
+            all_tmdb_ids = {}
+            page_size = 1000
+            start = 0
+            
+            while True:
+                response = self.supabase.table("tmdb_ids") \
+                    .select("key, value") \
+                    .range(start, start + page_size - 1) \
+                    .execute()
+                
+                if not response.data:
+                    break
+                    
+                all_tmdb_ids.update({item['key']: item['value'] for item in response.data})
+                
+                if len(response.data) < page_size:
+                    break
+                    
+                start += page_size
+            
+            return all_tmdb_ids
         except Exception as e:
             self.log.error(f"Failed to read from tmdb_ids: {e}")
             raise
@@ -93,47 +116,80 @@ class DatabaseManager:
 
     def get_metas(self) -> dict:
         try:
-            response = self.supabase.table("metas").select("key, value").execute()
-            if not response.data:
-                return {}
-            metas = {item['key']: item['value'] for item in response.data}
-            return metas
+            all_metas = {}
+            page_size = 1000
+            start = 0
+            
+            while True:
+                response = self.supabase.table("metas") \
+                    .select("key, value") \
+                    .range(start, start + page_size - 1) \
+                    .execute()
+                
+                if not response.data:
+                    break
+                    
+                all_metas.update({item['key']: item['value'] for item in response.data})
+                
+                if len(response.data) < page_size:
+                    break
+                    
+                start += page_size
+            
+            return all_metas
         except Exception as e:
             self.log.error(f"Failed to read from metas: {e}")
             raise
 
     def get_catalogs(self) -> dict:
         try:
-            response = self.supabase.table("catalogs").select("key, value").execute()
-            if not response.data:
-                return {}
-            catalogs = {item['key']: item['value'] for item in response.data}
-            # Process catalog data
-            for key, value in catalogs.items():
-                if not isinstance(value, dict):
-                    continue
-                data = value.get("data") or []
-                conv_data = []
-                for item in data:
-                    if isinstance(item, dict):
-                        conv_data.append(ImdbInfo.from_dict(item))
-                value.update({"data": conv_data})
-                catalogs[key] = value
-            return catalogs
+            all_catalogs = {}
+            page_size = 1000
+            start = 0
+            
+            while True:
+                response = self.supabase.table("catalogs") \
+                    .select("key, value") \
+                    .range(start, start + page_size - 1) \
+                    .execute()
+                
+                if not response.data:
+                    break
+                    
+                catalogs_page = {item['key']: item['value'] for item in response.data}
+                
+                # Process catalog data for this page
+                for key, value in catalogs_page.items():
+                    if not isinstance(value, dict):
+                        continue
+                    data = value.get("data") or []
+                    conv_data = []
+                    for item in data:
+                        if isinstance(item, dict):
+                            conv_data.append(ImdbInfo.from_dict(item))
+                    value.update({"data": conv_data})
+                    all_catalogs[key] = value
+                
+                if len(response.data) < page_size:
+                    break
+                    
+                start += page_size
+            
+            return all_catalogs
         except Exception as e:
             self.log.error(f"Failed to read from catalogs: {e}")
             raise
 
     def update_tmbd_ids(self, tmdb_ids: dict):
-        self.__db_set_all("tmdb_ids", tmdb_ids)
+        self.__db_update_changes("tmdb_ids", tmdb_ids)
         self.__cached_data["tmdb_ids"] = self.get_tmdb_ids()
 
     def update_metas(self, metas: dict):
-        self.__db_set_all("metas", metas)
+        self.__db_update_changes("metas", metas)
         self.__cached_data["metas"] = self.get_metas()
 
     def update_manifest(self, manifest: dict):
-        self.__db_set_all("manifest", manifest)
+        self.__db_update_changes("manifest", manifest)
         self.__cached_data["manifest"] = self.get_manifest()
 
     def update_catalogs(self, catalogs: dict):
@@ -166,7 +222,7 @@ class DatabaseManager:
                 self.log.error(f"Failed to serialize catalog {key}: {e}")
                 continue
 
-        self.__db_set_all("catalogs", serializable_catalogs)
+        self.__db_update_changes("catalogs", serializable_catalogs)
         self.__cached_data["catalogs"] = self.get_catalogs()
 
     @property

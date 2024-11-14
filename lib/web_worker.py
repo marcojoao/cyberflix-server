@@ -202,7 +202,7 @@ class WebWorker:
         if trakt_key is not None:
             trakt_metas = self.__get_trakt_recommendations(id, trakt_key)
             catalog_ids.extend(trakt_metas)
-        
+
         catalog_ids = self.__filter_meta(catalog_ids, genre, skip)
         catalogs_ids_not_cached = []
         metas = []
@@ -218,7 +218,6 @@ class WebWorker:
             results = await self.__provider.get_catalog_metas_async(catalog_info=catalogs_ids_not_cached)
             metas.extend(results.get("metas") or [])
 
-        # update new metas to cache
         new_cached_metas = {}
         for meta in metas:
             meta_id = meta.get("id") or None
@@ -230,7 +229,6 @@ class WebWorker:
                     break
         db_manager.cached_metas.update(new_cached_metas)
 
-        # order metas with ImdbInfo
         sorted_metas = []
         for item in catalog_ids:
             if not isinstance(item, ImdbInfo):
@@ -256,7 +254,6 @@ class WebWorker:
                         continue
                     new_items.append(item)
             else:
-                # this is for backward compatibility
                 genre = self.__provider.cinemeta.get_simplified_genre(genre) or genre
                 for item in items:
                     if genre not in item.genres:

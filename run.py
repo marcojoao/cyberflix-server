@@ -18,12 +18,25 @@ project_dir = os.path.join(app.root_path, "web/")
 app.mount("/static", StaticFiles(directory=project_dir), name="static")
 templates = Jinja2Templates(directory=project_dir)
 
+# Add a new constant for cache durations
+CACHE_DURATIONS = {
+    "SHORT": 60 * 15,       # 15 minutes
+    "MEDIUM": 60 * 60 * 4,  # 4 hours
+    "LONG": 60 * 60 * 24,   # 24 hours
+    "VERY_LONG": 60 * 60 * 24 * 7  # 7 days
+}
+
 
 def add_cache_headers(max_age: int) -> dict:
-    """Add cache control headers."""
+    """Add cache control headers with improved caching strategy."""
     return {
-        "Cache-Control": f"max-age={max_age}, stale-while-revalidate={max_age}, "
-        f"stale-if-error={max_age}, public"
+        "Cache-Control": (
+            f"public, "
+            f"max-age={max_age}, "
+            f"stale-while-revalidate={max_age // 2}, "  # Half the max-age
+            f"stale-if-error={max_age * 2}"  # Double the max-age
+        ),
+        "Vary": "Accept-Encoding"  # Important for proper caching with compression
     }
 
 
@@ -103,21 +116,22 @@ async def manifest(
     referer = str(request.base_url)
     manifest = worker.get_configured_manifest(referer, configs)
     manifest.update({"server_version": SERVER_VERSION})
-    return __json_response(manifest)
+    headers = add_cache_headers(CACHE_DURATIONS["SHORT"])
+    return __json_response(manifest, extra_headers=headers)
 
 
 @app.get("/web_config.json")
 async def web_config():
     config = worker.get_web_config()
-    return __json_response(config)
+    headers = add_cache_headers(CACHE_DURATIONS["MEDIUM"])
+    return __json_response(config, extra_headers=headers)
 
 
 @app.get("/get_trakt_url")
 async def trakt_url():
     url = {"url": worker.get_trakt_auth_url()}
-    # cache_age = 60 * 60 * 4  # 4 hours
-    # headers = add_cache_headers(cache_age)
-    return __json_response(url)
+    headers = add_cache_headers(CACHE_DURATIONS["SHORT"])
+    return __json_response(url, extra_headers=headers)
 
 
 @app.post("/get_trakt_access_token")
@@ -136,9 +150,8 @@ async def meta(type: str | None, id: str | None, configs: str | None = None):
     if id is None or type is None:
         return HTTPException(status_code=404, detail="Not found")
     meta = worker.get_meta(id=id, s_type=type, config=configs)
-    # cache_age = 60 * 60 * 4  # 4 hours
-    # headers = add_cache_headers(cache_age)
-    return __json_response(meta)
+    headers = add_cache_headers(CACHE_DURATIONS["VERY_LONG"])
+    return __json_response(meta, extra_headers=headers)
 
 
 @app.get("/catalog/{type}/{id}.json")
@@ -156,9 +169,8 @@ async def catalog_with_configs(
         return HTTPException(status_code=404, detail="Not found")
 
     metas = await worker.get_configured_catalog(id=id, extras=extras, config=configs)
-    # cache_age = 60 * 60 * 4  # 4 hours
-    # headers = add_cache_headers(cache_age)
-    return __json_response(metas)
+    headers = add_cache_headers(CACHE_DURATIONS["MEDIUM"])
+    return __json_response(metas, extra_headers=headers)
 
 
 if __name__ == "__main__":
