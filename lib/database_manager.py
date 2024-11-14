@@ -23,8 +23,19 @@ class DatabaseManager:
             "catalogs": self.get_catalogs(),
             "tmdb_ids": self.get_tmdb_ids(),
             "metas": {},
-            # "metas": self.get_metas()
         }
+
+        # Start background loading of metas
+        import threading
+        threading.Thread(target=self.__load_metas_background, daemon=True).start()
+
+    def __load_metas_background(self):
+        """Load metas in the background and update the cache."""
+        try:
+            self.__cached_data["metas"] = self.get_metas()
+            self.log.info("Metas loaded successfully in background")
+        except Exception as e:
+            self.log.error(f"Failed to load metas in background: {e}")
 
     def __db_update_changes(self, table_name: str, new_items: dict) -> bool:
         try:
@@ -252,35 +263,16 @@ class DatabaseManager:
 
     def get_metas_by_keys(self, keys: list[str]) -> dict:
         try:
-            # Import here to avoid circular dependency
-            from lib.utils import parallel_for, divide_chunks
-
-            # Split keys into chunks to avoid too many keys in a single query
-            CHUNK_SIZE = 5  # Adjust based on your needs
-            
-            def fetch_meta(key_chunk, _, __, **kwargs):
-                response = self.supabase.table("metas") \
+            response = self.supabase.table("metas") \
                     .select("key, value") \
-                    .in_("key", key_chunk) \
+                    .in_("key", keys) \
                     .execute()
-                
-                if not response.data:
-                    return {}
-                return {item['key']: item['value'] for item in response.data}
-            
-            # Process chunks in parallel
-            chunks = list(divide_chunks(keys, CHUNK_SIZE))
-            results = parallel_for(fetch_meta, chunks)
-            
-            # Combine all results
-            combined_metas = {}
-            for chunk_result in results:
-                combined_metas.update(chunk_result)
-                
-            # Update cache
-            self.__cached_data["metas"].update(combined_metas)
-            return combined_metas
-            
+
+            if not response.data:
+                return {}
+            metas = {item['key']: item['value'] for item in response.data}
+            self.__cached_data["metas"].update(metas)
+            return metas
         except Exception as e:
             self.log.error(f"Failed to read specific metas: {e}")
             raise
