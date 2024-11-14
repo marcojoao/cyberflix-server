@@ -185,6 +185,7 @@ class WebWorker:
         catalog = db_manager.cached_catalogs.get(id) or {}
         catalog_ids = catalog.get("data") or []
 
+
         parsed_extras = self.__extras_parser(extras)
         genre = parsed_extras.get("genre", None)
         skip = parsed_extras.get("skip", 0)
@@ -201,7 +202,7 @@ class WebWorker:
         if trakt_key is not None:
             trakt_metas = self.__get_trakt_recommendations(id, trakt_key)
             catalog_ids.extend(trakt_metas)
-
+        
         catalog_ids = self.__filter_meta(catalog_ids, genre, skip)
         catalogs_ids_not_cached = []
         metas = []

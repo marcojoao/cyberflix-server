@@ -13,34 +13,15 @@ class DatabaseManager:
             _ = self.supabase.rpc('manifest').execute()
             self.log.info("Database connection successful")
         except Exception as e:
-            # Just log the error instead of raising it
             self.log.warning(f"Database health check failed (this is normal on first run): {str(e)}")
 
-        self.__table_names = [
-            "manifest",
-            "catalogs",
-            "tmdb_ids",
-            "metas"
-        ]
-
         # Load all data into memory at startup
-        self.__cached_data: dict[str, dict] = {
-            table_name: self.__db_get_all(table_name)
-            for table_name in self.__table_names
+        self.__cached_data = {
+            "manifest": self.get_manifest(),
+            "catalogs": self.get_catalogs(),
+            "tmdb_ids": self.get_tmdb_ids(),
+            "metas": self.get_metas()
         }
-
-
-    def __db_get_all(self, table_name: str) -> dict:
-        try:
-            response = self.supabase.table(table_name).select("key, value").execute()
-            if not response.data:
-                return {}
-
-            return {item['key']: item['value'] for item in response.data}
-
-        except Exception as e:
-            self.log.error(f"Failed to read from {table_name}: {e}")
-            raise
 
     def __db_set_all(self, table_name: str, items: dict) -> bool:
         try:
@@ -91,27 +72,57 @@ class DatabaseManager:
         return self.__cached_data["metas"]
 
     def get_tmdb_ids(self) -> dict:
-        return self.__db_get_all("tmdb_ids")
+        try:
+            response = self.supabase.table("tmdb_ids").select("key, value").execute()
+            if not response.data:
+                return {}
+            return {item['key']: item['value'] for item in response.data}
+        except Exception as e:
+            self.log.error(f"Failed to read from tmdb_ids: {e}")
+            raise
 
     def get_manifest(self) -> dict:
-        return self.__db_get_all("manifest")
+        try:
+            response = self.supabase.table("manifest").select("key, value").execute()
+            if not response.data:
+                return {}
+            return {item['key']: item['value'] for item in response.data}
+        except Exception as e:
+            self.log.error(f"Failed to read from manifest: {e}")
+            raise
 
     def get_metas(self) -> dict:
-        return self.__db_get_all("metas")
+        try:
+            response = self.supabase.table("metas").select("key, value").execute()
+            if not response.data:
+                return {}
+            metas = {item['key']: item['value'] for item in response.data}
+            return metas
+        except Exception as e:
+            self.log.error(f"Failed to read from metas: {e}")
+            raise
 
     def get_catalogs(self) -> dict:
-        catalogs = self.__db_get_all("catalogs") or {}
-        for key, value in catalogs.items():
-            if not isinstance(value, dict):
-                continue
-            data = value.get("data") or []
-            conv_data = []
-            for item in data:
-                if isinstance(item, dict):
-                    conv_data.append(ImdbInfo.from_dict(item))
-            value.update({"data": conv_data})
-            catalogs.update({key: value})
-        return catalogs
+        try:
+            response = self.supabase.table("catalogs").select("key, value").execute()
+            if not response.data:
+                return {}
+            catalogs = {item['key']: item['value'] for item in response.data}
+            # Process catalog data
+            for key, value in catalogs.items():
+                if not isinstance(value, dict):
+                    continue
+                data = value.get("data") or []
+                conv_data = []
+                for item in data:
+                    if isinstance(item, dict):
+                        conv_data.append(ImdbInfo.from_dict(item))
+                value.update({"data": conv_data})
+                catalogs[key] = value
+            return catalogs
+        except Exception as e:
+            self.log.error(f"Failed to read from catalogs: {e}")
+            raise
 
     def update_tmbd_ids(self, tmdb_ids: dict):
         self.__db_set_all("tmdb_ids", tmdb_ids)
