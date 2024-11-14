@@ -20,7 +20,8 @@ class DatabaseManager:
             "manifest": self.get_manifest(),
             "catalogs": self.get_catalogs(),
             "tmdb_ids": self.get_tmdb_ids(),
-            "metas": self.get_metas()
+            "metas": {},
+            # "metas": self.get_metas()
         }
 
     def __db_update_changes(self, table_name: str, new_items: dict) -> bool:
@@ -82,23 +83,22 @@ class DatabaseManager:
             all_tmdb_ids = {}
             page_size = 1000
             start = 0
-            
+
             while True:
                 response = self.supabase.table("tmdb_ids") \
                     .select("key, value") \
                     .range(start, start + page_size - 1) \
                     .execute()
-                
+
                 if not response.data:
                     break
-                    
+
                 all_tmdb_ids.update({item['key']: item['value'] for item in response.data})
-                
+
                 if len(response.data) < page_size:
                     break
-                    
+
                 start += page_size
-            
             return all_tmdb_ids
         except Exception as e:
             self.log.error(f"Failed to read from tmdb_ids: {e}")
@@ -119,23 +119,20 @@ class DatabaseManager:
             all_metas = {}
             page_size = 1000
             start = 0
-            
             while True:
                 response = self.supabase.table("metas") \
                     .select("key, value") \
                     .range(start, start + page_size - 1) \
                     .execute()
-                
                 if not response.data:
                     break
-                    
                 all_metas.update({item['key']: item['value'] for item in response.data})
-                
+
                 if len(response.data) < page_size:
                     break
-                    
+
                 start += page_size
-            
+
             return all_metas
         except Exception as e:
             self.log.error(f"Failed to read from metas: {e}")
@@ -146,19 +143,18 @@ class DatabaseManager:
             all_catalogs = {}
             page_size = 1000
             start = 0
-            
+
             while True:
                 response = self.supabase.table("catalogs") \
                     .select("key, value") \
                     .range(start, start + page_size - 1) \
                     .execute()
-                
+
                 if not response.data:
                     break
-                    
+
                 catalogs_page = {item['key']: item['value'] for item in response.data}
-                
-                # Process catalog data for this page
+
                 for key, value in catalogs_page.items():
                     if not isinstance(value, dict):
                         continue
@@ -169,12 +165,12 @@ class DatabaseManager:
                             conv_data.append(ImdbInfo.from_dict(item))
                     value.update({"data": conv_data})
                     all_catalogs[key] = value
-                
+
                 if len(response.data) < page_size:
                     break
-                    
+
                 start += page_size
-            
+
             return all_catalogs
         except Exception as e:
             self.log.error(f"Failed to read from catalogs: {e}")
@@ -206,18 +202,18 @@ class DatabaseManager:
 
         # Create a copy to avoid modifying the original data
         serializable_catalogs = {}
-        
+
         for key, value in catalogs.items():
             if not isinstance(value, dict):
                 continue
-            
+
             try:
                 # Convert the value to JSON-serializable format
                 serializable_value = json.loads(
                     json.dumps(value, cls=DateTimeEncoder)
                 )
                 serializable_catalogs[key] = serializable_value
-                
+
             except Exception as e:
                 self.log.error(f"Failed to serialize catalog {key}: {e}")
                 continue
@@ -260,3 +256,19 @@ class DatabaseManager:
             "sponsor": env.SPONSOR,
         }
         return {"config": config}
+
+    def get_metas_by_keys(self, keys: list[str]) -> dict:
+        try:
+            response = self.supabase.table("metas") \
+                .select("key, value") \
+                .in_("key", keys) \
+                .execute()
+
+            if not response.data:
+                return {}
+            new_metas = {item['key']: item['value'] for item in response.data}
+            self.__cached_data["metas"].update(new_metas)
+            return new_metas
+        except Exception as e:
+            self.log.error(f"Failed to read specific metas: {e}")
+            raise

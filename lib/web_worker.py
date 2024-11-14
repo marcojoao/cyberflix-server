@@ -215,8 +215,11 @@ class WebWorker:
                 metas.append(meta)
 
         if len(catalogs_ids_not_cached) > 0:
-            results = await self.__provider.get_catalog_metas_async(catalog_info=catalogs_ids_not_cached)
-            metas.extend(results.get("metas") or [])
+            keys = [item.id for item in catalogs_ids_not_cached]
+            new_metas = db_manager.get_metas_by_keys(keys)
+            metas.extend(new_metas.values())
+            # results = await self.__provider.get_catalog_metas_async(catalog_info=catalogs_ids_not_cached)
+            # metas.extend(results.get("metas") or [])
 
         new_cached_metas = {}
         for meta in metas:
