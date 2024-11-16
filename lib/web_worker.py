@@ -319,29 +319,43 @@ class WebWorker:
     def force_update(self):
         log.info("::=>[Update Triggered]")
         if self.__is_working:
-            log.info("::=>[Update Skipped]")
+            log.info("::=>[Update Skipped] Already working")
             return
-        self.__is_working = True
-        self.__builder.build()
-        db_manager.update_cache()
+        try:
+            self.__is_working = True
+            self.__builder.build()
+            db_manager.update_cache()
 
-        self.__last_update = datetime.now()
-        self.__is_working = False
+            # Verify the update
+            if not self.verify_update():
+                raise Exception("Update verification failed - no catalogs found")
 
-        log.info("::=>[Update Finished]")
+            self.__last_update = datetime.now()
+            log.info("::=>[Update Finished]")
+        except Exception as e:
+            log.error(f"::=>[Update Failed] Error: {str(e)}")
+            raise
+        finally:
+            self.__is_working = False
 
     def __background_catalog_updater(self):
         log.info("::=>[Update Service Started]")
+        max_retries = 3
+        
         while True:
             time.sleep(self.__update_interval)
-            try:
-                self.force_update()
-            except KeyboardInterrupt:
-                log.info("KeyboardInterrupt")
-                sys.exit(0)
-            except Exception as e:
-                log.info(f"Error on update_catalog: {e}")
-
+            
+            for attempt in range(max_retries):
+                try:
+                    self.force_update()
+                    break
+                except Exception as e:
+                    log.error(f"::=>[Update Failed] Attempt {attempt + 1}/{max_retries}: {str(e)}")
+                    if attempt < max_retries - 1:
+                        time.sleep(60)  # Wait before retry
+                    else:
+                        log.error("::=>[Update Failed] Max retries reached")
+            
             self.__update_interval = self.get_update_interval()
 
     def __extras_parser(self, extras: str | None) -> dict:
@@ -362,3 +376,18 @@ class WebWorker:
                     result.update({"skip": int(splited_skip[1])})
 
         return result
+
+    def verify_update(self):
+        log.info("::=>[Verify] Checking catalog updates...")
+
+        # Check catalog counts
+        catalog_count = len(db_manager.cached_catalogs)
+        log.info(f"::=>[Verify] Found {catalog_count} catalogs in cache")
+
+        # Check last modified timestamps
+        recent_changes = db_manager.get_recent_changes()
+        if recent_changes:
+            last_change = recent_changes[0]["timestamp"]
+            log.info(f"::=>[Verify] Last change recorded at: {last_change}")
+
+        return catalog_count > 0
