@@ -27,12 +27,12 @@ class CatalogList:
 
         movies_series = [CatalogType.MOVIES, CatalogType.SERIES]
         config: list[CatalogConfig] = [
-            CatalogConfig(
-                name_id="recommendations",
-                provider_id="trakt",
-                types=movies_series,
-                schema="recommendations",
-            ),
+            # CatalogConfig(
+            #     name_id="recommendations",
+            #     provider_id="trakt",
+            #     types=movies_series,
+            #     schema="recommendations",
+            # ),
             CatalogConfig(
                 name_id="premieres",
                 provider_id="tmdb",
@@ -92,8 +92,8 @@ class CatalogList:
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=nfx&country=US&language=en-US&count=100",
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="netflix.new",
@@ -101,16 +101,16 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=nfx&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="disney_plus.popular",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=dnp&country=US&language=en-US&count=100",
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="disney_plus.new",
@@ -118,16 +118,16 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=dnp&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="hbo_max.popular",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=mxx&country=US&language=en-US&count=100",
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="hbo_max.new",
@@ -135,16 +135,16 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=mxx&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="amazon_prime.popular",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=amp&country=US&language=en-US&count=100",
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="amazon_prime.new",
@@ -152,15 +152,15 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=amp&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
-                pages=20,
+                expiration_days=1,
+                pages=40,
             ),
             CatalogConfig(
                 name_id="apple_tv_plus.popular",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=atp&country=US&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -169,7 +169,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=atp&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -177,7 +177,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=hlu&country=US&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -186,7 +186,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=hlu&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -194,7 +194,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=pmp&country=US&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -203,7 +203,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=pmp&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -211,7 +211,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=pct,pcp&country=US&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -220,7 +220,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=pct,pcp&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -228,7 +228,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=wki&country=GB&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -237,7 +237,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=wki&country=GB&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -245,7 +245,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=stz&country=US&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -254,7 +254,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=stz&country=US&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -262,7 +262,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=sst&country=NL&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -271,7 +271,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=sst&country=NL&language=en-US&count=100",
                 filter_type=CatalogFilterType.YEARS,
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -280,7 +280,7 @@ class CatalogList:
                 types=[CatalogType.MOVIES],
                 schema=f"{tmdb_discover_popular}&with_genres=16,10751&without_genres=80|27{tmdb_default_lang}",
                 hide_filters=["Animation", "Family"],
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 name_id="kids.popular",
@@ -288,7 +288,7 @@ class CatalogList:
                 types=[CatalogType.SERIES],
                 schema=f"{tmdb_discover_popular}&with_genres=10762{tmdb_default_lang}",
                 hide_filters=["Animation", "Family"],
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 name_id="kids.new",
@@ -314,7 +314,7 @@ class CatalogList:
                 types=movies_series,
                 schema="sort=POPULARITY_DESC",
                 hide_filters=["Animation"],
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -355,7 +355,7 @@ class CatalogList:
                 schema="sort=ID_DESC&season=WINTER",
                 hide_filters=["Animation"],
                 pages=20,
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 display_name="Spring Season",
@@ -366,7 +366,7 @@ class CatalogList:
                 schema="sort=ID_DESC&season=SPRING",
                 hide_filters=["Animation"],
                 pages=20,
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 display_name="Summer Season",
@@ -377,7 +377,7 @@ class CatalogList:
                 schema="sort=ID_DESC&season=SUMMER",
                 hide_filters=["Animation"],
                 pages=20,
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 display_name="Fall Season",
@@ -388,7 +388,7 @@ class CatalogList:
                 schema="sort=ID_DESC&season=FALL",
                 hide_filters=["Animation"],
                 pages=20,
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 name_id="asian.popular",
@@ -396,7 +396,7 @@ class CatalogList:
                 types=movies_series,
                 schema=f"{tmdb_discover_popular}&without_genres=16&with_original_language=ja|ko|th|vi|zh|id",
                 hide_filters=["Animation"],
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 name_id="asian.new",
@@ -422,7 +422,7 @@ class CatalogList:
                 types=movies_series,
                 schema=f"{tmdb_discover_popular}&without_genres=16&with_original_language=hi|bn|mr|te|ta|gu|ur|kn",
                 hide_filters=["Animation"],
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 name_id="indian.new",
@@ -447,7 +447,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=[CatalogType.ANY],
                 schema="sort=POPULAR&providers=cts,cta&country=GB&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -456,7 +456,7 @@ class CatalogList:
                 types=[CatalogType.ANY],
                 filter_type=CatalogFilterType.YEARS,
                 schema="sort=RELEASE_YEAR&providers=cts,cta&country=GB&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -464,7 +464,7 @@ class CatalogList:
                 provider_id="justwatch",
                 types=[CatalogType.ANY],
                 schema="sort=POPULAR&providers=mgl&country=GB&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -473,7 +473,7 @@ class CatalogList:
                 types=[CatalogType.ANY],
                 filter_type=CatalogFilterType.YEARS,
                 schema="sort=RELEASE_YEAR&providers=mgl&country=GB&language=en-US&count=100",
-                expiration_days=3,
+                expiration_days=1,
                 pages=20,
             ),
             CatalogConfig(
@@ -481,7 +481,7 @@ class CatalogList:
                 provider_id="tmdb",
                 types=movies_series,
                 schema=f"{tmdb_discover_popular}&watch_region=NL&with_watch_providers=72&with_original_language=nl",
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 name_id="videoland.new",
@@ -504,7 +504,7 @@ class CatalogList:
                 provider_id="tmdb",
                 types=movies_series,
                 schema=f"{tmdb_discover_popular}&watch_region=BR&with_watch_providers=307&with_original_language=pt",
-                expiration_days=3,
+                expiration_days=1,
             ),
             CatalogConfig(
                 name_id="globo_play.new",
@@ -527,21 +527,21 @@ class CatalogList:
             #     provider_id="mdblist",
             #     types=[CatalogType.MOVIES],
             #     schema="lists/3892/items/",
-            #     expiration_days=3,
+            #     expiration_days=1,
             # ),
             # CatalogConfig(
             #     name_id="public_lists.best_documentary",
             #     provider_id="mdblist",
             #     types=[CatalogType.MOVIES],
             #     schema="lists/2406/items/",
-            #     expiration_days=3,
+            #     expiration_days=1,
             # ),
             # CatalogConfig(
             #     name_id="public_lists.superhero",
             #     provider_id="mdblist",
             #     types=[CatalogType.MOVIES],
             #     schema="lists/2413/items/",
-            #     expiration_days=3,
+            #     expiration_days=1,
             # ),
             CatalogConfig(
                 name_id="network_series.discovery",

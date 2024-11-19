@@ -1,5 +1,5 @@
 # from datetime import datetime
-
+from lib.env import SKIP_DB_UPDATE
 from rich.progress import track
 from datetime import datetime
 from catalog_list import CatalogList
@@ -116,20 +116,20 @@ class Builder:
             cached_data = catalog.get("data") or []
             if item.force_update or len(cached_data) == 0:
                 continue
-            expiration_data: str = catalog.get("expiration_date", None)
-            if expiration_data is not None:
-                if datetime.fromisoformat(expiration_data) < datetime.now():
-                    item_metas = provider.get_catalog_metas(cached_data)
-                    if item_metas is None or len(item_metas) == 0:
-                        continue
+            # expiration_data: str = catalog.get("expiration_date", None)
+            # if expiration_data is not None:
+            #     if datetime.fromisoformat(expiration_data) < datetime.now():
+            #         item_metas = provider.get_catalog_metas(cached_data)
+            #         if item_metas is None or len(item_metas) == 0:
+            #             continue
 
-                    data = self.build_manifiest_item(item, conf_type, item_metas)
-                    if data is not None:
-                        outputs.append(data)
-                        types.remove(conf_type)
-                        log.info(
-                            f"Using cached {self.__get_item_id(item=item, conf_type=conf_type)}({conf_type.value.lower()})"
-                        )
+            #         data = self.build_manifiest_item(item, conf_type, item_metas)
+            #         if data is not None:
+            #             outputs.append(data)
+            #             types.remove(conf_type)
+            #             log.info(
+            #                 f"Using cached {self.__get_item_id(item=item, conf_type=conf_type)}({conf_type.value.lower()})"
+            #             )
 
         if len(types) == 0:
             return outputs
@@ -194,15 +194,16 @@ class Builder:
         #     log.info(f"Uploading {lang} translations to firestore ...")
         #     db_manager.set_catalog_translations(db_manager.cached_translations, lang)
 
-        log.info("Uploading metas ...")
-        db_manager.update_metas(db_manager.cached_metas)
+        if not SKIP_DB_UPDATE:
+            log.info("Uploading metas ...")
+            db_manager.update_metas(metas=db_manager.cached_metas)
 
-        log.info("Uploading manifest ...")
-        manifest = self.__manifest.get_meta(catalogs_config=manifest_catalog)
-        db_manager.update_manifest(manifest)
+            log.info("Uploading catalogs ...")
+            db_manager.update_catalogs(catalogs=db_manager.cached_catalogs)
 
-        log.info("Uploading catalogs ...")
-        db_manager.update_catalogs(db_manager.cached_catalogs)
+            log.info("Uploading manifest ...")
+            manifest = self.__manifest.get_meta(catalogs_config=manifest_catalog)
+            db_manager.update_manifest(manifest=manifest)
 
 
 if __name__ == "__main__":
