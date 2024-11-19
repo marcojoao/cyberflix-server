@@ -19,7 +19,7 @@ class TMDBProvider(CatalogProvider):
         schema = schema.replace("$type", catalog_type).replace("$api_key", self.tmdb.api_key)
         url = f"{self.tmdb.url}/{schema}"
         imdb_infos = self.get_catalog_pages(url=url, c_type=c_type, pages=pages)
-        db_manager.update_tmbd_ids(db_manager.cached_tmdb_ids)
+        db_manager.update_tmdb_ids(db_manager.cached_tmdb_ids)
         return imdb_infos
 
     def __get_imdb_id(self, tmdb_id: str, type: CatalogType) -> str | None:

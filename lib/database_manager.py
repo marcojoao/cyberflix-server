@@ -4,6 +4,7 @@ from lib import env
 from lib.providers.catalog_info import ImdbInfo
 
 from datetime import datetime
+from collections import OrderedDict
 
 
 class DatabaseManager:
@@ -39,23 +40,26 @@ class DatabaseManager:
 
     def __db_update_changes(self, table_name: str, new_items: dict) -> bool:
         try:
-
             existing_items = self.__cached_data.get(table_name, {})
             keys_to_delete = set(existing_items.keys()) - set(new_items.keys())
             keys_to_update = set()
             keys_to_insert = set()
+            # Preserve order by using list of tuples instead of sets
+            ordered_changes = []
             for key, value in new_items.items():
                 if key not in existing_items:
                     keys_to_insert.add(key)
+                    ordered_changes.append(("insert", key))
                 elif existing_items[key] != value:
                     keys_to_update.add(key)
+                    ordered_changes.append(("update", key))
 
             if keys_to_delete or keys_to_update or keys_to_insert:
                 change_record = {
                     "table_name": table_name,
                     "deleted_keys": list(keys_to_delete),
                     "updated_keys": list(keys_to_update),
-                    "inserted_keys": list(keys_to_insert),
+                    "inserted_keys": list(keys_to_insert), # Add ordered changes
                     "timestamp": datetime.now().isoformat()
                 }
                 self.supabase.table("changes").insert(change_record).execute()
@@ -89,10 +93,21 @@ class DatabaseManager:
             start = 0
 
             while True:
-                response = self.supabase.table("tmdb_ids") \
-                    .select("key, value") \
-                    .range(start, start + page_size - 1) \
-                    .execute()
+                # Add retry logic for each page
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        response = self.supabase.table("tmdb_ids") \
+                            .select("key, value") \
+                            .range(start, start + page_size - 1) \
+                            .execute()
+                        break
+                    except Exception as e:
+                        if attempt == max_retries - 1:  # Last attempt
+                            raise
+                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        import time
+                        time.sleep(1)  # Wait 1 second before retrying
 
                 if not response.data:
                     break
@@ -124,12 +139,25 @@ class DatabaseManager:
             page_size = 1000
             start = 0
             while True:
-                response = self.supabase.table("metas") \
-                    .select("key, value") \
-                    .range(start, start + page_size - 1) \
-                    .execute()
+                # Add retry logic for each page
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        response = self.supabase.table("metas") \
+                            .select("key, value") \
+                            .range(start, start + page_size - 1) \
+                            .execute()
+                        break
+                    except Exception as e:
+                        if attempt == max_retries - 1:  # Last attempt
+                            raise
+                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        import time
+                        time.sleep(1)  # Wait 1 second before retrying
+
                 if not response.data:
                     break
+
                 all_metas.update({item['key']: item['value'] for item in response.data})
 
                 if len(response.data) < page_size:
@@ -142,9 +170,9 @@ class DatabaseManager:
             self.log.error(f"Failed to read from metas: {e}")
             raise
 
-    def get_catalogs(self) -> dict:
+    def get_catalogs(self) -> OrderedDict:
         try:
-            all_catalogs = {}
+            all_catalogs = OrderedDict()
             page_size = 1000
             start = 0
 
@@ -180,50 +208,127 @@ class DatabaseManager:
             self.log.error(f"Failed to read from catalogs: {e}")
             raise
 
-    def update_tmbd_ids(self, tmdb_ids: dict):
-        self.__db_update_changes("tmdb_ids", tmdb_ids)
-        self.__cached_data["tmdb_ids"] = self.get_tmdb_ids()
+    def update_tmdb_ids(self, tmdb_ids: dict):
+        try:
+            existing_tmdb_ids = self.get_tmdb_ids()
+            chunk_size = 1000
+            # Find records that need to be updated or inserted
+            updates = {}
+            for key, value in tmdb_ids.items():
+                if key not in existing_tmdb_ids or existing_tmdb_ids[key] != value:
+                    updates[key] = value
+
+            if not updates:
+                return  # No changes needed
+            # Process updates in chunks
+            update_items = list(updates.items())
+            for i in range(0, len(update_items), chunk_size):
+                chunk = dict(update_items[i:i + chunk_size])
+                data = [{"key": key, "value": value} for key, value in chunk.items()]
+                
+                # Add retry logic for each chunk
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        self.supabase.table("tmdb_ids").upsert(data).execute()
+                        break
+                    except Exception as e:
+                        if attempt == max_retries - 1:
+                            raise
+                        self.log.warning(f"Upsert retry {attempt + 1}/{max_retries} failed: {e}")
+                        import time
+                        time.sleep(1)
+                
+                self.log.info(f"Processed TMDB chunk {i//chunk_size + 1}/{(len(update_items) + chunk_size - 1)//chunk_size}")
+            
+            # Record the changes and update cache
+            self.__db_update_changes("tmdb_ids", tmdb_ids)
+            self.__cached_data["tmdb_ids"] = self.get_tmdb_ids()
+        except Exception as e:
+            self.log.error(f"Failed to update tmdb_ids: {e}")
+            raise
 
     def update_metas(self, metas: dict):
-        self.__db_update_changes("metas", metas)
-        self.__cached_data["metas"] = self.get_metas()
+        try:
+            # Split data into smaller chunks (e.g., 100 items per chunk)
+            chunk_size = 1000
+            metas_items = list(metas.items())
+
+            for i in range(0, len(metas_items), chunk_size):
+                chunk = dict(metas_items[i:i + chunk_size])
+                data = [{"key": key, "value": value} for key, value in chunk.items()]
+
+                # Add retry logic for each chunk
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        self.supabase.table("metas").upsert(data).execute()
+                        break
+                    except Exception as e:
+                        if attempt == max_retries - 1:  # Last attempt
+                            raise
+                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        import time
+                        time.sleep(1)  # Wait 1 second before retrying
+                
+                # Log progress
+                self.log.info(f"Processed metas chunk {i//chunk_size + 1}/{(len(metas_items) + chunk_size - 1)//chunk_size}")
+            
+            self.__db_update_changes("metas", metas)
+            self.__cached_data["metas"] = self.get_metas()
+        except Exception as e:
+            self.log.error(f"Failed to update metas: {e}")
+            raise
 
     def update_manifest(self, manifest: dict):
-        self.__db_update_changes("manifest", manifest)
-        self.__cached_data["manifest"] = self.get_manifest()
+        try:
+
+            data = [{"key": key, "value": value} for key, value in manifest.items()]
+            self.supabase.table("manifest").upsert(data).execute()
+            self.__db_update_changes("manifest", manifest)
+            self.__cached_data["manifest"] = self.get_manifest()
+        except Exception as e:
+            self.log.error(f"Failed to update manifest: {e}")
+            raise
 
     def update_catalogs(self, catalogs: dict):
-        import json
-        from datetime import datetime
+        try:
+            import json
+            from datetime import datetime
 
-        class DateTimeEncoder(json.JSONEncoder):
-            def default(self, obj):
-                if isinstance(obj, datetime):
-                    return obj.isoformat()
-                if isinstance(obj, ImdbInfo):
-                    return obj.to_dict()
-                return super().default(obj)
+            class DateTimeEncoder(json.JSONEncoder):
+                def default(self, obj):
+                    if isinstance(obj, datetime):
+                        return obj.isoformat()
+                    if isinstance(obj, ImdbInfo):
+                        return obj.to_dict()
+                    return super().default(obj)
 
-        # Create a copy to avoid modifying the original data
-        serializable_catalogs = {}
 
-        for key, value in catalogs.items():
-            if not isinstance(value, dict):
-                continue
+            serializable_catalogs = OrderedDict()
+            data = []
+            for key, value in catalogs.items():
+                if not isinstance(value, dict):
+                    continue
 
-            try:
-                # Convert the value to JSON-serializable format
-                serializable_value = json.loads(
-                    json.dumps(value, cls=DateTimeEncoder)
-                )
-                serializable_catalogs[key] = serializable_value
+                try:
+                    serializable_value = json.loads(
+                        json.dumps(value, cls=DateTimeEncoder),
+                        object_pairs_hook=OrderedDict
+                    )
+                    serializable_catalogs[key] = serializable_value
+                    data.append({"key": key, "value": serializable_value})
 
-            except Exception as e:
-                self.log.error(f"Failed to serialize catalog {key}: {e}")
-                continue
+                except Exception as e:
+                    self.log.error(f"Failed to serialize catalog {key}: {e}")
+                    continue
 
-        self.__db_update_changes("catalogs", serializable_catalogs)
-        self.__cached_data["catalogs"] = self.get_catalogs()
+            self.supabase.table("catalogs").upsert(data).execute()
+            self.__db_update_changes("catalogs", serializable_catalogs)
+            self.__cached_data["catalogs"] = self.get_catalogs()
+        except Exception as e:
+            self.log.error(f"Failed to update catalogs: {e}")
+            raise
 
     @property
     def supported_langs(self) -> dict[str, str]:
