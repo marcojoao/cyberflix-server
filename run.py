@@ -34,10 +34,10 @@ def add_cache_headers(max_age: int) -> dict:
         "Cache-Control": (
             f"public, "
             f"max-age={max_age}, "
-            f"stale-while-revalidate={max_age // 2}, "  # Half the max-age
-            f"stale-if-error={max_age * 2}"  # Double the max-age
+            f"stale-while-revalidate={max_age // 2}, "
+            f"stale-if-error={max_age * 2}"
         ),
-        "Vary": "Accept-Encoding"  # Important for proper caching with compression
+        "Vary": "Accept-Encoding"
     }
 
 
@@ -173,8 +173,8 @@ async def catalog_with_configs(
         return HTTPException(status_code=404, detail="Not found")
 
     metas = await worker.get_configured_catalog(id=id, extras=extras, config=configs)
-    # headers = add_cache_headers(CACHE_DURATIONS["MEDIUM"])
-    return __json_response(metas)
+    headers = add_cache_headers(CACHE_DURATIONS["MEDIUM"])
+    return __json_response(metas, extra_headers=headers)
 
 if __name__ == "__main__":
     uvicorn.run(
