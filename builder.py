@@ -52,16 +52,14 @@ class Builder:
                     break
         return new_infos
 
-    def build_manifiest_item(self, item: CatalogConfig, conf_type: CatalogType, values: dict = {}) -> dict:
+    def build_manifiest_item(self, item: CatalogConfig, conf_type: CatalogType, values: list[ImdbInfo]) -> dict:
         unique_filters = set()
-        metas = values.get("metas") or []
-        for value in metas:
+        for value in values:
             if item.filter_type == CatalogFilterType.CATEGORIES:
-                genres = value.get("genres", [])
-                for genre in genres:
+                for genre in value.genres:
                     unique_filters.add(genre)
             elif item.filter_type == CatalogFilterType.YEARS:
-                year = value.get("releaseInfo")
+                year = value.year
                 if year is not None:
                     unique_filters.add(year)
         is_type_years = item.filter_type == CatalogFilterType.YEARS
@@ -110,27 +108,25 @@ class Builder:
         if provider is None:
             return outputs
 
-        # Check if catalog needs updating based on expiration date
         current_time = datetime.now()
-        for conf_type in types[:]:  # Create a copy to safely modify during iteration
+        for conf_type in types[:]:
             item_id = self.__get_item_id(item, conf_type)
             existing_catalog = db_manager.cached_catalogs.get(item_id)
-            if not item.force_update and existing_catalog and existing_catalog.get('expiration_date'):
-                expiration_date = datetime.fromisoformat(existing_catalog['expiration_date'])
+            expiration_date = datetime.fromisoformat(existing_catalog.get('expiration_date'))
+            if not item.force_update and existing_catalog and expiration_date:
                 if current_time < expiration_date:
-                    if existing_catalog.get('data'):
-                        outputs.append(self.build_manifiest_item(item, conf_type))
+                    data = existing_catalog.get('data')
+                    outputs.append(self.build_manifiest_item(item, conf_type, data))
                     types.remove(conf_type)
                     continue
 
-        # If no types need updating, return early
         if not types:
             return outputs
 
-        # Process each remaining catalog type in parallel
+
         def process_type(conf_type, idx, worker_id):
             if provider.on_demand:
-                return self.build_manifiest_item(item, conf_type)
+                return self.build_manifiest_item(item, conf_type, [])
 
             imdb_infos = provider.get_imdb_info(schema=item.schema, pages=item.pages, c_type=conf_type)
             if imdb_infos is None or len(imdb_infos) == 0:
@@ -145,19 +141,15 @@ class Builder:
             dict_by_id = {item.get("id"): item for item in metas}
             imdb_infos = self.update_imdb_infos(imdb_infos, item_metas)
 
-            # Return all necessary data for later processing
             return {
                 "item_id": item_id,
                 "dict_by_id": dict_by_id,
                 "imdb_infos": imdb_infos,
-                "manifest_item": self.build_manifiest_item(item, conf_type, item_metas)
+                "manifest_item": self.build_manifiest_item(item, conf_type, imdb_infos)
             }
 
-        # Execute parallel processing
-        
         results = parallel_for(process_type, types)
 
-        # Process results and update databases
         for result in results:
             if result is None:
                 continue
@@ -184,9 +176,6 @@ class Builder:
 
     def build(self):
         log.info("Caching catalongs...")
-        # db_manager.init_tmdb_ids_cache()
-        # db_manager.init_translations_cache()
-
         configs = CatalogList.get_catalog_configs()
 
         manifest_catalog = []
@@ -195,10 +184,6 @@ class Builder:
             current_catalog = config.name_id
             data = self.build_catalog(config)
             manifest_catalog.extend(data)
-
-        # for lang in db_manager.supported_langs.values():
-        #     log.info(f"Uploading {lang} translations to firestore ...")
-        #     db_manager.set_catalog_translations(db_manager.cached_translations, lang)
 
         if not SKIP_DB_UPDATE:
             log.info("Uploading tmdb ids ...")

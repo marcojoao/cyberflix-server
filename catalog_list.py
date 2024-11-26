@@ -116,7 +116,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="disney_plus.popular",
-                display_name="Disney+",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=dnp&country=US&language=en-US&count=100",
@@ -125,7 +124,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="disney_plus.new",
-                display_name="Disney+",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=dnp&country=US&language=en-US&count=100",
@@ -135,7 +133,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="hbo_max.popular",
-                display_name="Max",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=mxx&country=US&language=en-US&count=100",
@@ -144,7 +141,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="hbo_max.new",
-                display_name="Max",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=mxx&country=US&language=en-US&count=100",
@@ -154,7 +150,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="amazon_prime.popular",
-                display_name="Prime Video",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=amp&country=US&language=en-US&count=100",
@@ -163,7 +158,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="amazon_prime.new",
-                display_name="Prime Video",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=amp&country=US&language=en-US&count=100",
@@ -173,7 +167,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="apple_tv_plus.popular",
-                display_name="Apple TV+",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=atp&country=US&language=en-US&count=100",
@@ -182,7 +175,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="apple_tv_plus.new",
-                display_name="Apple TV+",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=atp&country=US&language=en-US&count=100",
@@ -209,7 +201,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="paramount_plus.popular",
-                display_name="Paramount+",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=POPULAR&providers=pmp&country=US&language=en-US&count=100",
@@ -218,7 +209,6 @@ class CatalogList:
             ),
             CatalogConfig(
                 name_id="paramount_plus.new",
-                display_name="Paramount+",
                 provider_id="justwatch",
                 types=movies_series,
                 schema="sort=RELEASE_YEAR&providers=pmp&country=US&language=en-US&count=100",
