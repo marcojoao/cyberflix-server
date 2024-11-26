@@ -57,7 +57,7 @@ class DatabaseManager:
 
         except Exception as e:
             self.log.error(f"Failed to update {table_name}: {e}")
-            raise
+            return False
 
     @property
     def cached_tmdb_ids(self) -> dict:
@@ -118,7 +118,7 @@ class DatabaseManager:
             return all_tmdb_ids
         except Exception as e:
             self.log.error(f"Failed to read from tmdb_ids: {e}")
-            raise
+            return {}
 
     def get_manifest(self) -> dict:
         try:
@@ -128,7 +128,7 @@ class DatabaseManager:
             return {item['key']: item['value'] for item in response.data}
         except Exception as e:
             self.log.error(f"Failed to read from manifest: {e}")
-            raise
+            return {}
 
     def get_metas(self) -> dict:
         try:
@@ -171,8 +171,7 @@ class DatabaseManager:
             return all_metas
         except Exception as e:
             self.log.error(f"Failed to read from metas: {e}")
-            raise
-
+            return {}
     def get_catalogs(self) -> OrderedDict:
         try:
             all_catalogs = OrderedDict()
@@ -209,8 +208,7 @@ class DatabaseManager:
             return all_catalogs
         except Exception as e:
             self.log.error(f"Failed to read from catalogs: {e}")
-            raise
-
+            return {}
     def update_tmdb_ids(self, tmdb_ids: dict):
         try:
             existing_tmdb_ids = self.get_tmdb_ids()
@@ -246,7 +244,6 @@ class DatabaseManager:
             self.__cached_data["tmdb_ids"] = self.get_tmdb_ids()
         except Exception as e:
             self.log.error(f"Failed to update tmdb_ids: {e}")
-            raise
 
     def update_metas(self, metas: dict):
         try:
@@ -280,7 +277,6 @@ class DatabaseManager:
             self.__cached_data["metas"] = self.get_metas()
         except Exception as e:
             self.log.error(f"Failed to update metas: {e}")
-            raise
 
     def update_manifest(self, manifest: dict):
         try:
@@ -291,7 +287,6 @@ class DatabaseManager:
             self.__cached_data["manifest"] = self.get_manifest()
         except Exception as e:
             self.log.error(f"Failed to update manifest: {e}")
-            raise
 
     def update_catalogs(self, catalogs: dict):
         try:
@@ -351,7 +346,6 @@ class DatabaseManager:
             self.__cached_data["catalogs"] = self.get_catalogs()
         except Exception as e:
             self.log.error(f"Failed to update catalogs: {e}")
-            raise
 
     @property
     def supported_langs(self) -> dict[str, str]:
@@ -414,8 +408,7 @@ class DatabaseManager:
                     time.sleep(wait_time)
         except Exception as e:
             self.log.error(f"Failed to read specific metas: {e}")
-            raise
-
+            return {}
     def get_recent_changes(self, limit: int = 50) -> list:
         """Get the most recent changes."""
         try:
