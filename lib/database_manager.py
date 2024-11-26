@@ -391,16 +391,27 @@ class DatabaseManager:
 
     def get_metas_by_keys(self, keys: list[str]) -> dict:
         try:
-            response = self.supabase.table("metas") \
-                    .select("key, value") \
-                    .in_("key", keys) \
-                    .execute()
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = self.supabase.table("metas") \
+                            .select("key, value") \
+                            .in_("key", keys) \
+                            .execute()
 
-            if not response.data:
-                return {}
-            metas = {item['key']: item['value'] for item in response.data}
-            self.__cached_data["metas"].update(metas)
-            return metas
+                    if not response.data:
+                        return {}
+                    metas = {item['key']: item['value'] for item in response.data}
+                    self.__cached_data["metas"].update(metas)
+                    return metas
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    wait_time = 2 ** attempt
+                    self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                    self.log.info(f"Waiting {wait_time} seconds before retry...")
+                    import time
+                    time.sleep(wait_time)
         except Exception as e:
             self.log.error(f"Failed to read specific metas: {e}")
             raise
