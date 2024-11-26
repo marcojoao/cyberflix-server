@@ -1,6 +1,5 @@
 import asyncio
 from abc import abstractmethod
-import os
 from lib import log, utils
 from lib.apis.cinemeta import Cinemeta
 from lib.apis.tmdb import TMDB

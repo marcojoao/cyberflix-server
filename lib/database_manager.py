@@ -2,6 +2,7 @@ from supabase import create_client
 
 from lib import env
 from lib.providers.catalog_info import ImdbInfo
+from lib.utils import parallel_for
 
 from datetime import datetime
 from collections import OrderedDict
@@ -25,18 +26,6 @@ class DatabaseManager:
             "tmdb_ids": self.get_tmdb_ids(),
             "metas": {},
         }
-
-        # # Start background loading of metas
-        # import threading
-        # threading.Thread(target=self.__load_metas_background, daemon=True).start()
-
-    def __load_metas_background(self):
-        """Load metas in the background and update the cache."""
-        try:
-            self.__cached_data["metas"] = self.get_metas()
-            self.log.info("Metas loaded successfully in background")
-        except Exception as e:
-            self.log.error(f"Failed to load metas in background: {e}")
 
     def __db_update_changes(self, table_name: str, new_items: dict) -> bool:
         try:
@@ -89,35 +78,43 @@ class DatabaseManager:
     def get_tmdb_ids(self) -> dict:
         try:
             all_tmdb_ids = {}
-            page_size = 1000
-            start = 0
+            page_size = 500
 
-            while True:
-                # Add retry logic for each page
+            try:
+                total_items = self.supabase.table("tmdb_ids").select("count", count='exact').execute().count
+            except Exception as e:
+                self.log.warning(f"Failed to get exact count for tmdb_ids, using pagination fallback: {e}")
+                total_items = page_size
+
+            ranges = [(i, min(i + page_size - 1, total_items - 1)) 
+                     for i in range(0, total_items, page_size)]
+
+            def fetch_range(range_tuple, idx, worker_id):
+                start, end = range_tuple
                 max_retries = 3
                 for attempt in range(max_retries):
                     try:
                         response = self.supabase.table("tmdb_ids") \
                             .select("key, value") \
-                            .range(start, start + page_size - 1) \
+                            .range(start, end) \
                             .execute()
-                        break
+                        result = {item['key']: item['value'] for item in response.data}
+                        # If we got no results and we're using the fallback, we've reached the end
+                        if not result and total_items == page_size:
+                            return None
+                        return result
                     except Exception as e:
-                        if attempt == max_retries - 1:  # Last attempt
+                        if attempt == max_retries - 1:
                             raise
                         self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
                         import time
-                        time.sleep(1)  # Wait 1 second before retrying
+                        time.sleep(1)
 
-                if not response.data:
-                    break
+            results = parallel_for(fetch_range, ranges, max_workers=4)
+            for result in results:
+                if isinstance(result, dict):
+                    all_tmdb_ids.update(result)
 
-                all_tmdb_ids.update({item['key']: item['value'] for item in response.data})
-
-                if len(response.data) < page_size:
-                    break
-
-                start += page_size
             return all_tmdb_ids
         except Exception as e:
             self.log.error(f"Failed to read from tmdb_ids: {e}")
@@ -136,34 +133,40 @@ class DatabaseManager:
     def get_metas(self) -> dict:
         try:
             all_metas = {}
-            page_size = 1000
-            start = 0
-            while True:
-                # Add retry logic for each page
+            page_size = 500
+            try:
+                total_items = self.supabase.table("metas").select("count", count='exact').execute().count
+            except Exception as e:
+                self.log.warning(f"Failed to get exact count for metas, using pagination fallback: {e}")
+                total_items = page_size
+
+            ranges = [(i, min(i + page_size - 1, total_items - 1)) 
+                     for i in range(0, total_items, page_size)]
+
+            def fetch_range(range_tuple, idx, worker_id):
+                start, end = range_tuple
                 max_retries = 3
                 for attempt in range(max_retries):
                     try:
                         response = self.supabase.table("metas") \
                             .select("key, value") \
-                            .range(start, start + page_size - 1) \
+                            .range(start, end) \
                             .execute()
-                        break
+                        result = {item['key']: item['value'] for item in response.data}
+                        if not result and total_items == page_size:
+                            return None
+                        return result
                     except Exception as e:
-                        if attempt == max_retries - 1:  # Last attempt
+                        if attempt == max_retries - 1:
                             raise
                         self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
                         import time
-                        time.sleep(1)  # Wait 1 second before retrying
+                        time.sleep(1)
 
-                if not response.data:
-                    break
-
-                all_metas.update({item['key']: item['value'] for item in response.data})
-
-                if len(response.data) < page_size:
-                    break
-
-                start += page_size
+            results = parallel_for(fetch_range, ranges, max_workers=4)
+            for result in results:
+                if isinstance(result, dict):
+                    all_metas.update(result)
 
             return all_metas
         except Exception as e:
@@ -173,7 +176,7 @@ class DatabaseManager:
     def get_catalogs(self) -> OrderedDict:
         try:
             all_catalogs = OrderedDict()
-            page_size = 1000
+            page_size = 50
             start = 0
 
             while True:
@@ -211,8 +214,7 @@ class DatabaseManager:
     def update_tmdb_ids(self, tmdb_ids: dict):
         try:
             existing_tmdb_ids = self.get_tmdb_ids()
-            chunk_size = 1000
-            # Find records that need to be updated or inserted
+            chunk_size = 500
             updates = {}
             for key, value in tmdb_ids.items():
                 if key not in existing_tmdb_ids or existing_tmdb_ids[key] != value:
@@ -220,13 +222,11 @@ class DatabaseManager:
 
             if not updates:
                 return  # No changes needed
-            # Process updates in chunks
             update_items = list(updates.items())
             for i in range(0, len(update_items), chunk_size):
                 chunk = dict(update_items[i:i + chunk_size])
                 data = [{"key": key, "value": value} for key, value in chunk.items()]
-                
-                # Add retry logic for each chunk
+
                 max_retries = 3
                 for attempt in range(max_retries):
                     try:
@@ -250,15 +250,15 @@ class DatabaseManager:
 
     def update_metas(self, metas: dict):
         try:
-            # Split data into smaller chunks (e.g., 100 items per chunk)
-            chunk_size = 1000
+
+            chunk_size = 500
             metas_items = list(metas.items())
 
             for i in range(0, len(metas_items), chunk_size):
                 chunk = dict(metas_items[i:i + chunk_size])
                 data = [{"key": key, "value": value} for key, value in chunk.items()]
 
-                # Add retry logic for each chunk
+                # Add exponential backoff retry logic
                 max_retries = 3
                 for attempt in range(max_retries):
                     try:
@@ -267,13 +267,15 @@ class DatabaseManager:
                     except Exception as e:
                         if attempt == max_retries - 1:  # Last attempt
                             raise
+                        wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
                         self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        self.log.info(f"Waiting {wait_time} seconds before retry...")
                         import time
-                        time.sleep(1)  # Wait 1 second before retrying
-                
+                        time.sleep(wait_time)
+
                 # Log progress
                 self.log.info(f"Processed metas chunk {i//chunk_size + 1}/{(len(metas_items) + chunk_size - 1)//chunk_size}")
-            
+
             self.__db_update_changes("metas", metas)
             self.__cached_data["metas"] = self.get_metas()
         except Exception as e:
@@ -304,26 +306,47 @@ class DatabaseManager:
                         return obj.to_dict()
                     return super().default(obj)
 
-
+            chunk_size = 10
             serializable_catalogs = OrderedDict()
-            data = []
-            for key, value in catalogs.items():
-                if not isinstance(value, dict):
-                    continue
+            catalog_items = list(catalogs.items())
 
-                try:
-                    serializable_value = json.loads(
-                        json.dumps(value, cls=DateTimeEncoder),
-                        object_pairs_hook=OrderedDict
-                    )
-                    serializable_catalogs[key] = serializable_value
-                    data.append({"key": key, "value": serializable_value})
+            for i in range(0, len(catalog_items), chunk_size):
+                chunk = dict(catalog_items[i:i + chunk_size])
+                data = []
 
-                except Exception as e:
-                    self.log.error(f"Failed to serialize catalog {key}: {e}")
-                    continue
+                for key, value in chunk.items():
+                    if not isinstance(value, dict):
+                        continue
 
-            self.supabase.table("catalogs").upsert(data).execute()
+                    try:
+                        serializable_value = json.loads(
+                            json.dumps(value, cls=DateTimeEncoder),
+                            object_pairs_hook=OrderedDict
+                        )
+                        serializable_catalogs[key] = serializable_value
+                        data.append({"key": key, "value": serializable_value})
+                    except Exception as e:
+                        self.log.error(f"Failed to serialize catalog {key}: {e}")
+                        continue
+
+                # Add retry logic with exponential backoff
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        self.supabase.table("catalogs").upsert(data).execute()
+                        break
+                    except Exception as e:
+                        if attempt == max_retries - 1:  # Last attempt
+                            raise
+                        wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        self.log.info(f"Waiting {wait_time} seconds before retry...")
+                        import time
+                        time.sleep(wait_time)
+
+                # Log progress
+                self.log.info(f"Processed catalogs chunk {i//chunk_size + 1}/{(len(catalog_items) + chunk_size - 1)//chunk_size}")
+
             self.__db_update_changes("catalogs", serializable_catalogs)
             self.__cached_data["catalogs"] = self.get_catalogs()
         except Exception as e:

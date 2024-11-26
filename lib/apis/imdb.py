@@ -51,7 +51,7 @@ class IMDB:
             "extensions": {
                 "persistedQuery": {
                     "version": 1,
-                    "sha256Hash": "42714660b115c035a3c14572bfd2765c622e2659f7b346e2ee7a1f24296f08e7",
+                    "sha256Hash": "60a7b8470b01671336ffa535b21a0a6cdaf50267fa2ab55b3e3772578a8c1f00",
                 }
             },
         }
@@ -83,7 +83,7 @@ class IMDB:
             "extensions": {
                 "persistedQuery": {
                     "version": 1,
-                    "sha256Hash": "42714660b115c035a3c14572bfd2765c622e2659f7b346e2ee7a1f24296f08e7",
+                    "sha256Hash": "60a7b8470b01671336ffa535b21a0a6cdaf50267fa2ab55b3e3772578a8c1f00",
                 }
             },
         }
@@ -194,3 +194,16 @@ class IMDB:
                     print(e)
                     continue
         return nodes
+
+    def get_latest_hash(self) -> str:
+        try:
+            # Make a request to IMDb's main page or search page
+            response = httpx.get("https://www.imdb.com/search/title/", headers=self.__headers)
+            # Look for the hash in the JavaScript bundles
+            # This is a simplified example - you'd need to parse the JS to find the actual hash
+            if "sha256Hash" in response.text:
+                # Extract using regex or other parsing methods
+                pass
+        except Exception as e:
+            print(f"Failed to fetch latest hash: {e}")
+            return None

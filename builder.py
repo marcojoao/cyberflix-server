@@ -17,7 +17,7 @@ from lib.providers.just_watch_provider import JustWatchProvider
 from lib.providers.mdblist_provider import MDBListProvider
 from lib.providers.tmdb_provider import TMDBProvider
 from lib.providers.trakt_provider import TraktProvider
-
+from lib.utils import parallel_for
 
 class Builder:
     def __init__(self) -> None:
@@ -110,60 +110,66 @@ class Builder:
         if provider is None:
             return outputs
 
-        for conf_type in item.types:
+        # Check if catalog needs updating based on expiration date
+        current_time = datetime.now()
+        for conf_type in types[:]:  # Create a copy to safely modify during iteration
             item_id = self.__get_item_id(item, conf_type)
-            catalog = db_manager.cached_catalogs.get(item_id) or {}
-            cached_data = catalog.get("data") or []
-            if item.force_update or len(cached_data) == 0:
-                continue
-            # expiration_data: str = catalog.get("expiration_date", None)
-            # if expiration_data is not None:
-            #     if datetime.fromisoformat(expiration_data) < datetime.now():
-            #         item_metas = provider.get_catalog_metas(cached_data)
-            #         if item_metas is None or len(item_metas) == 0:
-            #             continue
+            existing_catalog = db_manager.cached_catalogs.get(item_id)
+            if not item.force_update and existing_catalog and existing_catalog.get('expiration_date'):
+                expiration_date = datetime.fromisoformat(existing_catalog['expiration_date'])
+                if current_time < expiration_date:
+                    if existing_catalog.get('data'):
+                        outputs.append(self.build_manifiest_item(item, conf_type))
+                    types.remove(conf_type)
+                    continue
 
-            #         data = self.build_manifiest_item(item, conf_type, item_metas)
-            #         if data is not None:
-            #             outputs.append(data)
-            #             types.remove(conf_type)
-            #             log.info(
-            #                 f"Using cached {self.__get_item_id(item=item, conf_type=conf_type)}({conf_type.value.lower()})"
-            #             )
-
-        if len(types) == 0:
+        # If no types need updating, return early
+        if not types:
             return outputs
 
-        for conf_type in types:
-
-            log.info(f"Building {item.name_id} ({conf_type.value.lower()})")
-
+        # Process each remaining catalog type in parallel
+        def process_type(conf_type, idx, worker_id):
             if provider.on_demand:
-                data = self.build_manifiest_item(item, conf_type)
-                outputs.append(data)
-                continue
+                return self.build_manifiest_item(item, conf_type)
 
             imdb_infos = provider.get_imdb_info(schema=item.schema, pages=item.pages, c_type=conf_type)
             if imdb_infos is None or len(imdb_infos) == 0:
-                continue
+                return None
 
-            # update catalog lists
             item_id = self.__get_item_id(item, conf_type)
-
             item_metas = provider.get_catalog_metas(imdb_infos)
             if item_metas is None or len(item_metas) == 0:
-                continue
+                return None
+
             metas = item_metas.get("metas") or []
             dict_by_id = {item.get("id"): item for item in metas}
             imdb_infos = self.update_imdb_infos(imdb_infos, item_metas)
-            db_manager.cached_metas.update(dict_by_id)
-            db_manager.cached_catalogs.update(
-                {item_id: {"expiration_date": item.expiration_date, "data": imdb_infos}}
-            )
 
-            # update catalog metas
-            data = self.build_manifiest_item(item, conf_type, item_metas)
-            outputs.append(data)
+            # Return all necessary data for later processing
+            return {
+                "item_id": item_id,
+                "dict_by_id": dict_by_id,
+                "imdb_infos": imdb_infos,
+                "manifest_item": self.build_manifiest_item(item, conf_type, item_metas)
+            }
+
+        # Execute parallel processing
+        
+        results = parallel_for(process_type, types)
+
+        # Process results and update databases
+        for result in results:
+            if result is None:
+                continue
+
+            db_manager.cached_metas.update(result["dict_by_id"])
+            db_manager.cached_catalogs.update({
+                result["item_id"]: {
+                    "expiration_date": item.expiration_date,
+                    "data": result["imdb_infos"]
+                }
+            })
+            outputs.append(result["manifest_item"])
 
         return outputs
 
@@ -195,6 +201,9 @@ class Builder:
         #     db_manager.set_catalog_translations(db_manager.cached_translations, lang)
 
         if not SKIP_DB_UPDATE:
+            log.info("Uploading tmdb ids ...")
+            db_manager.update_tmdb_ids(db_manager.cached_tmdb_ids)
+
             log.info("Uploading metas ...")
             db_manager.update_metas(metas=db_manager.cached_metas)
 

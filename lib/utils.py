@@ -1,16 +1,18 @@
 import concurrent.futures
 import traceback
-from lib import log
+import logging
 import os
+
+log = logging.getLogger(__name__)
 
 def divide_chunks(l, n):
     """
     Divide a list into chunks of size n.
-    
+
     Args:
         l: List to divide
         n: Size of each chunk
-        
+
     Returns:
         Generator yielding chunks of the list
     """

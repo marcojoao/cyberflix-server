@@ -1,17 +1,15 @@
 import os
-import asyncio
 
 import uvicorn
-from fastapi import FastAPI, Form, HTTPException, Request, Response, Path
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.gzip import GZipMiddleware
 from lib import env
 from lib.web_worker import WebWorker
-import httpx
 
-SERVER_VERSION = "1.0.0"
+SERVER_VERSION = "2.0.0"
 
 worker = WebWorker()
 app = FastAPI()
@@ -135,21 +133,19 @@ async def web_config():
     return __json_response(config, extra_headers=headers)
 
 
-@app.get("/get_trakt_url")
-async def trakt_url():
-    url = {"url": worker.get_trakt_auth_url()}
-    headers = add_cache_headers(CACHE_DURATIONS["SHORT"])
-    return __json_response(url, extra_headers=headers)
+# @app.get("/get_trakt_url")
+# async def trakt_url():
+#     url = {"url": worker.get_trakt_auth_url()}
+#     headers = add_cache_headers(CACHE_DURATIONS["SHORT"])
+#     return __json_response(url, extra_headers=headers)
 
 
-@app.post("/get_trakt_access_token")
-async def trakt_config(code: str = Form(...)):
-    if code is None:
-        return Response(status_code=500)
-    access_token = worker.get_trakt_access_token(code)
-    if access_token is None:
-        return Response(status_code=500)
-    return __json_response({"access_token": access_token})
+# @app.post("/get_trakt_access_token")
+# async def trakt_config(code: str = Form(...)):
+#     access_token = worker.get_trakt_access_token(code)
+#     if access_token is None:
+#         return Response(status_code=500)
+#     return __json_response({"access_token": access_token})
 
 
 @app.get("/meta/{type}/{id}.json")

@@ -20,4 +20,4 @@ SUPABASE_URL: str | None = os.getenv("SUPABASE_URL") or None
 SUPABASE_KEY: str | None = os.getenv("SUPABASE_KEY") or None
 
 SPONSOR: str = os.getenv("SPONSOR") or ""
-SKIP_DB_UPDATE: bool = (os.getenv("SKIP_DB_UPDATE") or None) == "True"
+SKIP_DB_UPDATE: bool = os.getenv("SKIP_DB_UPDATE") == "True"

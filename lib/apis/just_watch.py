@@ -232,7 +232,7 @@ class JustWatch:
         with httpx.Client() as client:
             catalog_ids = []
             for _ in range(1, pages + 1):
-                time.sleep(1)
+                #time.sleep(1)
                 try:
                     query = self.__get_popular_titles_query(**schema_dict)
                     if not query:
