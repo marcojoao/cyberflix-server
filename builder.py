@@ -86,7 +86,6 @@ class Builder:
             "id": self.__get_item_id(item=item, conf_type=conf_type),
             "name": name,
             "type": item_type,
-            "pageSize": 25,
             "extra": [
                 {
                     "name": "genre",

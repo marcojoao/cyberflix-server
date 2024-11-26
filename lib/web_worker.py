@@ -169,16 +169,9 @@ class WebWorker:
         return trakt_metas
 
     def get_meta(self, id: str, s_type: str, config: str | None) -> dict:
-        # lang_key = "en"
-        # if isinstance(config, str) and config != "":
-        #     converted_configs = self.convert_config(config)
-        #     if converted_configs is not None:
-        #         lang_key = converted_configs.get("lang", None)
         imdb_id = id.replace("cyberflix:", "")
         original_meta = self.__provider.cinemeta.get_meta(id=imdb_id, s_type=s_type) or {}
         meta = original_meta.get("meta") or {}
-        # if lang_key != "en":
-        #     meta = self.__translate_meta(item=meta, lang=lang_key)
         return {"meta": meta}
 
     async def get_configured_catalog(self, id: str, extras: str | None, config: str | None) -> dict:
@@ -244,7 +237,10 @@ class WebWorker:
                 metas=sorted_metas, api_key=rpdb_key, lang=lang_key or "en"
             )
 
-        return {"metas": sorted_metas}
+        return {
+            "metas": sorted_metas,
+            "total": len(sorted_metas)
+        }
 
     def __filter_meta(self, items: list[ImdbInfo], genre: str | None, skip: int) -> list:
         new_items = []
@@ -263,24 +259,9 @@ class WebWorker:
         else:
             new_items = items
 
-        min_step = min(skip + 65, len(new_items))
-        return new_items[:min_step]
-
-    # def __translate_meta(self, **kwargs) -> dict:
-    #     meta = kwargs.get("item", None)
-    #     if isinstance(meta, dict):
-    #         lang = kwargs.get("lang", "en")
-    #         imdb_id = meta.get("id", None)
-    #         title = meta.get("name", None)
-    #         translation = self.__builder.get_translation(imdb_id, title, lang)
-    #         if translation is None:
-    #             return meta
-    #         t_name = translation.get("name") or meta.get("name") or ""
-    #         t_description = translation.get("description") or meta.get("description") or ""
-    #         t_poster = translation.get("poster") or meta.get("poster") or ""
-    #         meta.update({"name": t_name, "description": t_description, "poster": t_poster})
-    #         return meta
-    #     return meta
+        page_size = 25
+        min_step = min(skip + page_size, len(new_items))
+        return new_items[skip:min_step]
 
     @property
     def manifest(self):

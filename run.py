@@ -173,8 +173,8 @@ async def catalog_with_configs(
         return HTTPException(status_code=404, detail="Not found")
 
     metas = await worker.get_configured_catalog(id=id, extras=extras, config=configs)
-    headers = add_cache_headers(CACHE_DURATIONS["MEDIUM"])
-    return __json_response(metas, extra_headers=headers)
+    # headers = add_cache_headers(CACHE_DURATIONS["MEDIUM"])
+    return __json_response(metas)
 
 if __name__ == "__main__":
     uvicorn.run(
