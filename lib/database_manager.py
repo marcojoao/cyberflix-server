@@ -78,7 +78,7 @@ class DatabaseManager:
     def get_tmdb_ids(self) -> dict:
         try:
             all_tmdb_ids = {}
-            page_size = 500
+            page_size = 1000
 
             try:
                 total_items = self.supabase.table("tmdb_ids").select("count", count='exact').execute().count
@@ -133,7 +133,7 @@ class DatabaseManager:
     def get_metas(self) -> dict:
         try:
             all_metas = {}
-            page_size = 500
+            page_size = 1000
             try:
                 total_items = self.supabase.table("metas").select("count", count='exact').execute().count
             except Exception as e:
@@ -176,7 +176,7 @@ class DatabaseManager:
     def get_catalogs(self) -> OrderedDict:
         try:
             all_catalogs = OrderedDict()
-            page_size = 50
+            page_size = 100
             start = 0
 
             while True:
@@ -214,7 +214,7 @@ class DatabaseManager:
     def update_tmdb_ids(self, tmdb_ids: dict):
         try:
             existing_tmdb_ids = self.get_tmdb_ids()
-            chunk_size = 500
+            chunk_size = 1000
             updates = {}
             for key, value in tmdb_ids.items():
                 if key not in existing_tmdb_ids or existing_tmdb_ids[key] != value:
