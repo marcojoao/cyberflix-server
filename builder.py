@@ -111,6 +111,8 @@ class Builder:
         for conf_type in types[:]:
             item_id = self.__get_item_id(item, conf_type)
             existing_catalog = db_manager.cached_catalogs.get(item_id)
+            if existing_catalog is None:
+                continue
             expiration_date = datetime.fromisoformat(existing_catalog.get('expiration_date'))
             if not item.force_update and existing_catalog and expiration_date:
                 if current_time < expiration_date:

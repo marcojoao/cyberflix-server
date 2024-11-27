@@ -11,12 +11,11 @@ class JustWatch:
             "Accept": "*/*",
             "Accept-Language": "en-US,en;q=0.5",
             "content-type": "application/json",
-            "App-Version": "3.9.2-web-web",
-            "DEVICE-ID": "w6zCtFfDnioHQMKDCp0qw5",
+            "App-Version": "3.7.1-web-web",
+            "DEVICE-ID": "XFpiKlykEe6wTkKWjpYncw",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-site",
-            "priority": "u=1, i"
         }
 
     @property
@@ -40,20 +39,23 @@ class JustWatch:
               popularTitles(country: $country, first: $first, filter: $filter) {
                 edges {
                   node {
-                    objectType
-                    content(country: $country, language: $language) {
-                      title
-                      shortDescription
-                      posterUrl
-                      externalIds {
-                        imdbId
-                      }
-                    }
+                    ...SuggestedTitle
                   }
                 }
               }
             }
-            """,
+            fragment SuggestedTitle on MovieOrShow {
+              objectType
+              content(country: $country, language: $language) {
+                title
+                shortDescription
+                posterUrl
+                externalIds {
+                    imdbId
+                }
+              }
+            }
+        """,
         }
         return data
 
@@ -62,10 +64,10 @@ class JustWatch:
         **kwargs,
     ) -> dict:
         object_types = kwargs.get("objectType", "MOVIE")
-        sort_by = kwargs.get("sort", "POPULAR")
+        sort_by = kwargs.get("sort", "TRENDING")
         providers = kwargs.get("providers", "nfx")
-        country = kwargs.get("country", "US")
-        count = kwargs.get("count", 40)
+        country = kwargs.get("country", "GB")
+        count = kwargs.get("count", 100)
         language = kwargs.get("language", "en")
         after_cursor = kwargs.get("after_cursor", "")
         if not isinstance(object_types, list):
@@ -75,30 +77,23 @@ class JustWatch:
         data = {
             "operationName": "GetPopularTitles",
             "variables": {
+                "popularTitlesSortBy": sort_by,
                 "first": count,
                 "platform": "WEB",
-                "popularTitlesSortBy": sort_by,
                 "sortRandomSeed": 0,
+                "afterCursor": after_cursor,
                 "offset": None,
-                "creditsRole": "DIRECTOR",
-                "after": after_cursor,
                 "popularTitlesFilter": {
                     "ageCertifications": [],
                     "excludeGenres": [],
                     "excludeProductionCountries": [],
+                    "genres": [],
                     "objectTypes": object_types,
                     "productionCountries": [],
-                    "subgenres": [],
-                    "genres": [],
                     "packages": providers,
                     "excludeIrrelevantTitles": False,
                     "presentationTypes": [],
-                    "monetizationTypes": [],
-                    "searchQuery": ""
-                },
-                "watchNowFilter": {
-                    "packages": providers,
-                    "monetizationTypes": []
+                    "monetizationTypes": ["FREE", "FLATRATE", "ADS"],
                 },
                 "language": language,
                 "country": country,
@@ -125,18 +120,24 @@ class JustWatch:
                     ) {
                         totalCount
                         pageInfo {
+                            startCursor
                             endCursor
+                            hasPreviousPage
                             hasNextPage
                         }
                         edges {
-                            cursor
-                            node {
-                                objectType
-                                content(country: $country, language: $language) {
-                                    externalIds {
-                                        imdbId
-                                    }
-                                }
+                            ...PopularTitleGraphql
+                        }
+                    }
+                }
+
+                fragment PopularTitleGraphql on PopularTitlesEdge {
+                    cursor
+                    node {
+                        objectType
+                        content(country: $country, language: $language) {
+                            externalIds {
+                                imdbId
                             }
                         }
                     }
@@ -232,7 +233,7 @@ class JustWatch:
         with httpx.Client() as client:
             catalog_ids = []
             for _ in range(1, pages + 1):
-                #time.sleep(1)
+                time.sleep(1)
                 try:
                     query = self.__get_popular_titles_query(**schema_dict)
                     if not query:
