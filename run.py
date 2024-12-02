@@ -133,21 +133,6 @@ async def web_config():
     return __json_response(config, extra_headers=headers)
 
 
-# @app.get("/get_trakt_url")
-# async def trakt_url():
-#     url = {"url": worker.get_trakt_auth_url()}
-#     headers = add_cache_headers(CACHE_DURATIONS["SHORT"])
-#     return __json_response(url, extra_headers=headers)
-
-
-# @app.post("/get_trakt_access_token")
-# async def trakt_config(code: str = Form(...)):
-#     access_token = worker.get_trakt_access_token(code)
-#     if access_token is None:
-#         return Response(status_code=500)
-#     return __json_response({"access_token": access_token})
-
-
 @app.get("/meta/{type}/{id}.json")
 @app.get("/c/{configs}/meta/{type}/{id}.json")
 async def meta(type: str | None, id: str | None, configs: str | None = None):

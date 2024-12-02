@@ -81,7 +81,7 @@ class DatabaseManager:
             page_size = 1000
 
             try:
-                total_items = self.supabase.table("tmdb_ids").select("count", count='exact').execute().count
+                total_items = self.supabase.table("tmdb_ids").select("key", count='exact').execute().count
             except Exception as e:
                 self.log.warning(f"Failed to get exact count for tmdb_ids, using pagination fallback: {e}")
                 total_items = page_size
@@ -133,9 +133,11 @@ class DatabaseManager:
     def get_metas(self) -> dict:
         try:
             all_metas = {}
-            page_size = 1000
+            page_size = 100
+            failed_ranges = []
+
             try:
-                total_items = self.supabase.table("metas").select("count", count='exact').execute().count
+                total_items = self.supabase.table("metas").select("key", count='exact').execute().count
             except Exception as e:
                 self.log.warning(f"Failed to get exact count for metas, using pagination fallback: {e}")
                 total_items = page_size
@@ -158,20 +160,27 @@ class DatabaseManager:
                         return result
                     except Exception as e:
                         if attempt == max_retries - 1:
-                            raise
+                            failed_ranges.append(range_tuple)  # Track failed range
+                            self.log.error(f"Failed to fetch range {start}-{end}: {e}")
+                            return None
                         self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
                         import time
                         time.sleep(1)
 
-            results = parallel_for(fetch_range, ranges, max_workers=4)
+            results = parallel_for(fetch_range, ranges)
             for result in results:
                 if isinstance(result, dict):
                     all_metas.update(result)
 
-            return all_metas
+            if failed_ranges:
+                self.log.warning(f"Failed to fetch {len(failed_ranges)} ranges: {failed_ranges}")
+
+            # Convert back to dict instead of list of tuples
+            return dict(all_metas)
         except Exception as e:
             self.log.error(f"Failed to read from metas: {e}")
             return {}
+
     def get_catalogs(self) -> OrderedDict:
         try:
             all_catalogs = OrderedDict()
@@ -209,6 +218,7 @@ class DatabaseManager:
         except Exception as e:
             self.log.error(f"Failed to read from catalogs: {e}")
             return {}
+
     def update_tmdb_ids(self, tmdb_ids: dict):
         try:
             existing_tmdb_ids = self.get_tmdb_ids()
@@ -236,10 +246,10 @@ class DatabaseManager:
                         self.log.warning(f"Upsert retry {attempt + 1}/{max_retries} failed: {e}")
                         import time
                         time.sleep(1)
-                
+
                 self.log.info(f"Processed TMDB chunk {i//chunk_size + 1}/{(len(update_items) + chunk_size - 1)//chunk_size}")
-            
-            # Record the changes and update cache
+
+  
             self.__db_update_changes("tmdb_ids", tmdb_ids)
             self.__cached_data["tmdb_ids"] = self.get_tmdb_ids()
         except Exception as e:
@@ -249,7 +259,8 @@ class DatabaseManager:
         try:
 
             chunk_size = 500
-            metas_items = list(metas.items())
+            # remove duplacates 
+            metas_items = list(OrderedDict.fromkeys(metas.items()))
 
             for i in range(0, len(metas_items), chunk_size):
                 chunk = dict(metas_items[i:i + chunk_size])
