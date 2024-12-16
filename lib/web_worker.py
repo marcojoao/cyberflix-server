@@ -322,24 +322,17 @@ class WebWorker:
     def __background_catalog_updater(self):
         log.info("::=>[Update Service Started]")
         max_retries = 3
-        retry_delay = 60  # 1 minute between retries
-        failure_reschedule = 300  # 5 minutes after complete failure
-        
-        # Perform initial update without delay
-        self.__perform_update_with_retries(max_retries, retry_delay)
-        
+        retry_delay = 60
+        failure_reschedule = 300
+
         while True:
             try:
                 time.sleep(self.__update_interval)
                 if not self.__perform_update_with_retries(max_retries, retry_delay):
-                    # If update completely failed after all retries
                     log.error("::=>[Update Failed] Scheduling earlier retry in 5 minutes")
                     time.sleep(failure_reschedule)
                     continue
-                    
-                # Successful update, calculate next interval
                 self.__update_interval = self.get_update_interval()
-                
             except Exception as e:
                 log.error(f"::=>[Critical Error] in update thread: {str(e)}")
                 time.sleep(failure_reschedule)
