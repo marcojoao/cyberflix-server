@@ -322,22 +322,38 @@ class WebWorker:
     def __background_catalog_updater(self):
         log.info("::=>[Update Service Started]")
         max_retries = 3
+        retry_delay = 60  # 1 minute between retries
+        failure_reschedule = 300  # 5 minutes after complete failure
+        
+        # Perform initial update without delay
+        self.__perform_update_with_retries(max_retries, retry_delay)
         
         while True:
-            time.sleep(self.__update_interval)
-            
-            for attempt in range(max_retries):
-                try:
-                    self.force_update()
-                    break
-                except Exception as e:
-                    log.error(f"::=>[Update Failed] Attempt {attempt + 1}/{max_retries}: {str(e)}")
-                    if attempt < max_retries - 1:
-                        time.sleep(60)  # Wait before retry
-                    else:
-                        log.error("::=>[Update Failed] Max retries reached")
-            
-            self.__update_interval = self.get_update_interval()
+            try:
+                time.sleep(self.__update_interval)
+                if not self.__perform_update_with_retries(max_retries, retry_delay):
+                    # If update completely failed after all retries
+                    log.error("::=>[Update Failed] Scheduling earlier retry in 5 minutes")
+                    time.sleep(failure_reschedule)
+                    continue
+                    
+                # Successful update, calculate next interval
+                self.__update_interval = self.get_update_interval()
+                
+            except Exception as e:
+                log.error(f"::=>[Critical Error] in update thread: {str(e)}")
+                time.sleep(failure_reschedule)
+
+    def __perform_update_with_retries(self, max_retries, retry_delay):
+        for attempt in range(max_retries):
+            try:
+                self.force_update()
+                return True
+            except Exception as e:
+                log.error(f"::=>[Update Failed] Attempt {attempt + 1}/{max_retries}: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+        return False
 
     def __extras_parser(self, extras: str | None) -> dict:
         result = {"genre": None, "skip": 0}
@@ -372,3 +388,15 @@ class WebWorker:
             log.info(f"::=>[Verify] Last change recorded at: {last_change}")
 
         return catalog_count > 0
+
+    def is_updater_healthy(self):
+        return self.__background_threading_0.is_alive()
+
+    def restart_updater_if_needed(self):
+        if not self.is_updater_healthy():
+            log.warning("::=>[Update Service] Thread died, restarting...")
+            self.__background_threading_0 = threading.Thread(
+                name="Catalog Service", 
+                target=self.__background_catalog_updater
+            )
+            self.__background_threading_0.start()
