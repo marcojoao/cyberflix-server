@@ -1,11 +1,13 @@
-from lib import db_manager
+
 from lib.apis.anilist import AniList
 from lib.apis.tmdb import TMDB
 from lib.model.catalog_type import CatalogType
 from lib.providers.catalog_info import ImdbInfo
 from lib.providers.catalog_provider import CatalogProvider
 from lib.utils import parallel_for
+from lib.database_manager import DatabaseManager
 
+db_manager = DatabaseManager.instance()
 
 class AniListProvider(CatalogProvider):
     def __init__(self):

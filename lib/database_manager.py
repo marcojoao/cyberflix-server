@@ -1,6 +1,6 @@
 from supabase import create_client
 
-from lib import env
+from lib import env, log
 from lib.providers.catalog_info import ImdbInfo
 from lib.utils import parallel_for
 
@@ -9,23 +9,33 @@ from collections import OrderedDict
 
 
 class DatabaseManager:
-    def __init__(self, log=None):
-        self.log = log
-        self.supabase = create_client(env.SUPABASE_URL, env.SUPABASE_KEY)
+    _instance = None
+    _initialized = False
 
-        try:
-            _ = self.supabase.rpc('manifest').execute()
-            self.log.info("Database connection successful")
-        except Exception as e:
-            self.log.warning(f"Database health check failed (this is normal on first run): {str(e)}")
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
-        # Load all data into memory at startup
-        self.__cached_data = {
-            "manifest": self.get_manifest(),
-            "catalogs": self.get_catalogs(),
-            "tmdb_ids": self.get_tmdb_ids(),
-            "metas": {},
-        }
+    def __init__(self):
+        # Only initialize once
+        if not DatabaseManager._initialized:
+            self.supabase = create_client(env.SUPABASE_URL, env.SUPABASE_KEY)
+
+            try:
+                _ = self.supabase.rpc('manifest').execute()
+                log.info("Database connection successful")
+            except Exception as e:
+                log.warning(f"Database health check failed (this is normal on first run): {str(e)}")
+
+            # Load all data into memory at startup
+            self.__cached_data = {
+                "manifest": self.get_manifest(),
+                "catalogs": self.get_catalogs(),
+                "tmdb_ids": self.get_tmdb_ids(),
+                "metas": {},
+            }
+            DatabaseManager._initialized = True
 
     def __db_update_changes(self, table_name: str, new_items: dict) -> bool:
         try:
@@ -56,7 +66,7 @@ class DatabaseManager:
             return True
 
         except Exception as e:
-            self.log.error(f"Failed to update {table_name}: {e}")
+            log.error(f"Failed to update {table_name}: {e}")
             return False
 
     @property
@@ -83,7 +93,7 @@ class DatabaseManager:
             try:
                 total_items = self.supabase.table("tmdb_ids").select("key", count='exact').execute().count
             except Exception as e:
-                self.log.warning(f"Failed to get exact count for tmdb_ids, using pagination fallback: {e}")
+                log.warning(f"Failed to get exact count for tmdb_ids, using pagination fallback: {e}")
                 total_items = page_size
 
             ranges = [(i, min(i + page_size - 1, total_items - 1)) 
@@ -106,7 +116,7 @@ class DatabaseManager:
                     except Exception as e:
                         if attempt == max_retries - 1:
                             raise
-                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
                         import time
                         time.sleep(1)
 
@@ -117,7 +127,7 @@ class DatabaseManager:
 
             return all_tmdb_ids
         except Exception as e:
-            self.log.error(f"Failed to read from tmdb_ids: {e}")
+            log.error(f"Failed to read from tmdb_ids: {e}")
             return {}
 
     def get_manifest(self) -> dict:
@@ -127,7 +137,7 @@ class DatabaseManager:
                 return {}
             return {item['key']: item['value'] for item in response.data}
         except Exception as e:
-            self.log.error(f"Failed to read from manifest: {e}")
+            log.error(f"Failed to read from manifest: {e}")
             return {}
 
     def get_metas(self) -> dict:
@@ -139,7 +149,7 @@ class DatabaseManager:
             try:
                 total_items = self.supabase.table("metas").select("key", count='exact').execute().count
             except Exception as e:
-                self.log.warning(f"Failed to get exact count for metas, using pagination fallback: {e}")
+                log.warning(f"Failed to get exact count for metas, using pagination fallback: {e}")
                 total_items = page_size
 
             ranges = [(i, min(i + page_size - 1, total_items - 1)) 
@@ -161,9 +171,9 @@ class DatabaseManager:
                     except Exception as e:
                         if attempt == max_retries - 1:
                             failed_ranges.append(range_tuple)  # Track failed range
-                            self.log.error(f"Failed to fetch range {start}-{end}: {e}")
+                            log.error(f"Failed to fetch range {start}-{end}: {e}")
                             return None
-                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
                         import time
                         time.sleep(1)
 
@@ -173,12 +183,12 @@ class DatabaseManager:
                     all_metas.update(result)
 
             if failed_ranges:
-                self.log.warning(f"Failed to fetch {len(failed_ranges)} ranges: {failed_ranges}")
+                log.warning(f"Failed to fetch {len(failed_ranges)} ranges: {failed_ranges}")
 
             # Convert back to dict instead of list of tuples
             return dict(all_metas)
         except Exception as e:
-            self.log.error(f"Failed to read from metas: {e}")
+            log.error(f"Failed to read from metas: {e}")
             return {}
 
     def get_catalogs(self) -> OrderedDict:
@@ -216,7 +226,7 @@ class DatabaseManager:
 
             return all_catalogs
         except Exception as e:
-            self.log.error(f"Failed to read from catalogs: {e}")
+            log.error(f"Failed to read from catalogs: {e}")
             return {}
 
     def update_tmdb_ids(self, tmdb_ids: dict):
@@ -243,17 +253,17 @@ class DatabaseManager:
                     except Exception as e:
                         if attempt == max_retries - 1:
                             raise
-                        self.log.warning(f"Upsert retry {attempt + 1}/{max_retries} failed: {e}")
+                        log.warning(f"Upsert retry {attempt + 1}/{max_retries} failed: {e}")
                         import time
                         time.sleep(1)
 
-                self.log.info(f"Processed TMDB chunk {i//chunk_size + 1}/{(len(update_items) + chunk_size - 1)//chunk_size}")
+                log.info(f"Processed TMDB chunk {i//chunk_size + 1}/{(len(update_items) + chunk_size - 1)//chunk_size}")
 
   
             self.__db_update_changes("tmdb_ids", tmdb_ids)
             self.__cached_data["tmdb_ids"] = self.get_tmdb_ids()
         except Exception as e:
-            self.log.error(f"Failed to update tmdb_ids: {e}")
+            log.error(f"Failed to update tmdb_ids: {e}")
 
     def update_metas(self, metas: dict):
         try:
@@ -276,18 +286,18 @@ class DatabaseManager:
                         if attempt == max_retries - 1:  # Last attempt
                             raise
                         wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
-                        self.log.info(f"Waiting {wait_time} seconds before retry...")
+                        log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        log.info(f"Waiting {wait_time} seconds before retry...")
                         import time
                         time.sleep(wait_time)
 
                 # Log progress
-                self.log.info(f"Processed metas chunk {i//chunk_size + 1}/{(len(metas_items) + chunk_size - 1)//chunk_size}")
+                log.info(f"Processed metas chunk {i//chunk_size + 1}/{(len(metas_items) + chunk_size - 1)//chunk_size}")
 
             self.__db_update_changes("metas", metas)
             self.__cached_data["metas"] = self.get_metas()
         except Exception as e:
-            self.log.error(f"Failed to update metas: {e}")
+            log.error(f"Failed to update metas: {e}")
 
     def update_manifest(self, manifest: dict):
         try:
@@ -297,7 +307,7 @@ class DatabaseManager:
             self.__db_update_changes("manifest", manifest)
             self.__cached_data["manifest"] = self.get_manifest()
         except Exception as e:
-            self.log.error(f"Failed to update manifest: {e}")
+            log.error(f"Failed to update manifest: {e}")
 
     def update_catalogs(self, catalogs: dict):
         try:
@@ -332,7 +342,7 @@ class DatabaseManager:
                         serializable_catalogs[key] = serializable_value
                         data.append({"key": key, "value": serializable_value})
                     except Exception as e:
-                        self.log.error(f"Failed to serialize catalog {key}: {e}")
+                        log.error(f"Failed to serialize catalog {key}: {e}")
                         continue
 
                 # Add retry logic with exponential backoff
@@ -345,24 +355,24 @@ class DatabaseManager:
                         if attempt == max_retries - 1:  # Last attempt
                             raise
                         wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                        self.log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
-                        self.log.info(f"Waiting {wait_time} seconds before retry...")
+                        log.warning(f"Retry {attempt + 1}/{max_retries} failed: {e}")
+                        log.info(f"Waiting {wait_time} seconds before retry...")
                         import time
                         time.sleep(wait_time)
 
                 # Log progress
-                self.log.info(f"Processed catalogs chunk {i//chunk_size + 1}/{(len(catalog_items) + chunk_size - 1)//chunk_size}")
+                log.info(f"Processed catalogs chunk {i//chunk_size + 1}/{(len(catalog_items) + chunk_size - 1)//chunk_size}")
 
             self.__db_update_changes("catalogs", serializable_catalogs)
             self.__cached_data["catalogs"] = self.get_catalogs()
         except Exception as e:
-            self.log.error(f"Failed to update catalogs: {e}")
+            log.error(f"Failed to update catalogs: {e}")
 
     @property
     def supported_langs(self) -> dict[str, str]:
         catalogLanguages = {
             "🇬🇧 English": "en",
-            "🇪🇸 Spanish": "es",
+            "🇸 Spanish": "es",
             "🇫🇷 French": "fr",
             "🇩🇪 German": "de",
             "🇵🇹 Portuguese": "pt",
@@ -407,7 +417,7 @@ class DatabaseManager:
             self.__cached_data["metas"].update(metas)
             return metas
         except Exception as e:
-            self.log.error(f"Failed to read specific metas: {e}")
+            log.error(f"Failed to read specific metas: {e}")
             return {}
 
     def get_recent_changes(self, limit: int = 50) -> list:
@@ -420,5 +430,30 @@ class DatabaseManager:
                 .execute()
             return response.data
         except Exception as e:
-            self.log.error(f"Failed to get recent changes: {e}")
+            log.error(f"Failed to get recent changes: {e}")
             return []
+
+    def update_cache(self):
+        try:
+            # Start transaction
+            self.supabase.begin()
+            
+            # Perform updates
+            self.update_metas(self.cached_metas)
+            self.update_catalogs(self.cached_catalogs)
+            self.update_manifest(self.cached_manifest)
+            
+            # Commit transaction
+            self.supabase.commit()
+        except Exception as e:
+            # Rollback on error
+            self.supabase.rollback()
+            log.error(f"Failed to update cache: {e}")
+            raise
+
+    @classmethod
+    def instance(cls):
+        """Get the singleton instance of DatabaseManager."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance

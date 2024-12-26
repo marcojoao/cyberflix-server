@@ -6,7 +6,8 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 
 from builder import Builder
-from lib import db_manager, env, log
+from lib.database_manager import DatabaseManager
+from lib import env, log
 from lib.apis.rpdb import RPDB
 from lib.apis.trakt import Trakt
 from lib.model.catalog_type import CatalogType
@@ -14,6 +15,7 @@ from lib.model.catalog_web import CatalogWeb
 from lib.providers.catalog_info import ImdbInfo
 from lib.providers.catalog_provider import CatalogProvider
 
+db_manager = DatabaseManager.instance()
 
 class WebWorker:
     def __init__(self) -> None:
@@ -21,7 +23,6 @@ class WebWorker:
         self.__rpdb_api = RPDB()
         self.__provider = CatalogProvider()
         self.__builder: Builder = Builder()
-        self.__is_working: bool = False
 
         self.__last_update: datetime = datetime.now()
 
@@ -53,13 +54,16 @@ class WebWorker:
         return self.__manifest_version
 
     def get_update_interval(self) -> int:
-        current_time = datetime.now()
-        tar_time = current_time + timedelta(days=1)
-        tar_time = tar_time.replace(hour=3, minute=0, second=0, microsecond=0)
+        # For testing: return 5 minutes (300 seconds) instead of waiting until 3 AM
+        return 300
 
-        log.info(f"::=>[Update Schedule] next update will be at {tar_time.date()} {tar_time.time()}")
-        diff_time = tar_time - current_time
-        return round(diff_time.total_seconds())
+        # Original code (commented out for testing)
+        # current_time = datetime.now()
+        # tar_time = current_time + timedelta(days=1)
+        # tar_time = tar_time.replace(hour=3, minute=0, second=0, microsecond=0)
+        # log.info(f"::=>[Update Schedule] next update will be at {tar_time.date()} {tar_time.time()}")
+        # diff_time = tar_time - current_time
+        # return round(diff_time.total_seconds())
 
     def add_node(self, tree: CatalogWeb, path, node):
         if len(path) == 1:
@@ -268,8 +272,12 @@ class WebWorker:
         return db_manager.cached_manifest
 
     @property
-    def last_update(self):
+    def last_update(self) -> datetime:
         return self.__last_update
+
+    @last_update.setter
+    def last_update(self, value: datetime):
+        self.__last_update = value
 
     def get_recent_changes(self) -> dict:
         recent_changes = db_manager.get_recent_changes()
@@ -298,26 +306,32 @@ class WebWorker:
         return report
 
     def force_update(self):
-        log.info("::=>[Update Triggered]")
-        if self.__is_working:
-            log.info("::=>[Update Skipped] Already working")
-            return
         try:
-            self.__is_working = True
+            log.info("::=>[Update] Starting forced update...")
+            
+            # Perform update in chunks o minimize data loss risk
+            catalogs = db_manager.get_catalogs()
+            if not catalogs:
+                raise ValueError("No catalogs retrieved")
             self.__builder.build()
-            db_manager.update_cache()
-
-            # Verify the update
-            if not self.verify_update():
-                raise Exception("Update verification failed - no catalogs found")
-
+            # Update database in smaller transactions
+            chunk_size = 100
+            for i in range(0, len(catalogs), chunk_size):
+                chunk = dict(list(catalogs.items())[i:i + chunk_size])
+                try:
+                    
+                    db_manager.update_catalogs(chunk)
+                    log.info(f"::=>[Update] Processed chunk {i//chunk_size + 1}")
+                except Exception as chunk_error:
+                    log.error(f"::=>[Update] Chunk update failed: {str(chunk_error)}")
+                    raise
+            
             self.__last_update = datetime.now()
-            log.info("::=>[Update Finished]")
+            log.info("::=>[Update] Forced update completed successfully")
+            
         except Exception as e:
-            log.error(f"::=>[Update Failed] Error: {str(e)}")
+            log.error(f"::=>[Update Failed] Unexpected error: {str(e)}")
             raise
-        finally:
-            self.__is_working = False
 
     def __background_catalog_updater(self):
         log.info("::=>[Update Service Started]")
@@ -340,12 +354,34 @@ class WebWorker:
     def __perform_update_with_retries(self, max_retries, retry_delay):
         for attempt in range(max_retries):
             try:
+                # Store the current state before update
+                previous_state = {
+                    "catalogs": db_manager.cached_catalogs.copy(),
+                    "metas": db_manager.cached_metas.copy()
+                }
+                
+                # Attempt the update
                 self.force_update()
                 return True
+                
             except Exception as e:
-                log.error(f"::=>[Update Failed] Attempt {attempt + 1}/{max_retries}: {str(e)}")
+                log.error(f"::=>[Update Failed] Error: {str(e)}")
+                
+                try:
+                    # Restore previous state in cache
+                    db_manager.cached_catalogs = previous_state["catalogs"]
+                    db_manager.cached_metas = previous_state["metas"]
+                    log.info("::=>[Recovery] Restored previous cache state")
+                except Exception as restore_error:
+                    log.error(f"::=>[Recovery Failed] Could not restore cache: {str(restore_error)}")
+                
                 if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
+                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                    log.info(f"::=>[Retry] Waiting {wait_time} seconds before attempt {attempt + 2}/{max_retries}")
+                    time.sleep(wait_time)
+                else:
+                    log.error("::=>[Update Failed] All retry attempts exhausted")
+                    
         return False
 
     def __extras_parser(self, extras: str | None) -> dict:
@@ -369,18 +405,31 @@ class WebWorker:
 
     def verify_update(self):
         log.info("::=>[Verify] Checking catalog updates...")
-
+        
         # Check catalog counts
         catalog_count = len(db_manager.cached_catalogs)
-        log.info(f"::=>[Verify] Found {catalog_count} catalogs in cache")
-
-        # Check last modified timestamps
-        recent_changes = db_manager.get_recent_changes()
-        if recent_changes:
-            last_change = recent_changes[0]["timestamp"]
-            log.info(f"::=>[Verify] Last change recorded at: {last_change}")
-
-        return catalog_count > 0
+        if catalog_count == 0:
+            log.error("::=>[Verify] No catalogs found")
+            return False
+        
+        # Check for minimum expected catalogs
+        expected_catalogs = {"netflix.popular.movie", "disney_plus.popular.movie"}
+        missing_catalogs = [cat for cat in expected_catalogs if cat not in db_manager.cached_catalogs]
+        if missing_catalogs:
+            log.error(f"::=>[Verify] Missing essential catalogs: {missing_catalogs}")
+            return False
+        
+        # Check catalog sizes
+        small_catalogs = []
+        for key, value in db_manager.cached_catalogs.items():
+            data = value.get("data") or []
+            if len(data) < 10:  # Arbitrary minimum size
+                small_catalogs.append(key)
+        
+        if small_catalogs:
+            log.warning(f"::=>[Verify] Catalogs with suspiciously small size: {small_catalogs}")
+        
+        return True
 
     def is_updater_healthy(self):
         return self.__background_threading_0.is_alive()

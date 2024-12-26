@@ -1,9 +1,11 @@
-from lib import db_manager, utils
+from lib import utils
 from lib.apis.imdb import IMDB
 from lib.model.catalog_type import CatalogType
 from lib.providers.catalog_info import ImdbInfo
 from lib.providers.catalog_provider import CatalogProvider
+from lib.database_manager import DatabaseManager
 
+db_manager = DatabaseManager.instance()
 
 class TMDBProvider(CatalogProvider):
     def __init__(self):

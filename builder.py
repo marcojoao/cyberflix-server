@@ -3,7 +3,7 @@ from lib.env import SKIP_DB_UPDATE
 from rich.progress import track
 from datetime import datetime
 from catalog_list import CatalogList
-from lib import db_manager, log
+from lib import log
 from lib.apis.cinemeta import Cinemeta
 from lib.model.catalog_config import CatalogConfig
 from lib.model.catalog_filter_type import CatalogFilterType
@@ -18,6 +18,9 @@ from lib.providers.mdblist_provider import MDBListProvider
 from lib.providers.tmdb_provider import TMDBProvider
 from lib.providers.trakt_provider import TraktProvider
 from lib.utils import parallel_for
+from lib.database_manager import DatabaseManager
+
+db_manager = DatabaseManager.instance()
 
 class Builder:
     def __init__(self) -> None:
@@ -113,13 +116,13 @@ class Builder:
             existing_catalog = db_manager.cached_catalogs.get(item_id)
             if existing_catalog is None:
                 continue
-            expiration_date = datetime.fromisoformat(existing_catalog.get('expiration_date'))
-            if not item.force_update and existing_catalog and expiration_date:
-                if current_time < expiration_date:
-                    data = existing_catalog.get('data')
-                    outputs.append(self.build_manifiest_item(item, conf_type, data))
-                    types.remove(conf_type)
-                    continue
+            # expiration_date = datetime.fromisoformat(existing_catalog.get('expiration_date'))
+            # if not item.force_update and existing_catalog and expiration_date:
+            #     if current_time < expiration_date:
+            #         data = existing_catalog.get('data')
+            #         outputs.append(self.build_manifiest_item(item, conf_type, data))
+            #         types.remove(conf_type)
+            #         continue
 
         if not types:
             return outputs
